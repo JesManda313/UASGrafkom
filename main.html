@@ -14,9 +14,21 @@
 }
 </script>
 
-
 </head>
 <body style="margin:0; overflow:hidden;">
+    <div id="hint"
+        style="
+        position:fixed;
+        top:10px;
+        left:10px;
+        color:white;
+        font-family:Arial;
+        font-size:14px;
+        z-index:10;
+        user-select:none;
+        ">
+        Click P to switch Camera
+    </div>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'GLTFLoader';
@@ -37,13 +49,11 @@ const wallIDs = [
   60,37,115,54,118,8,93,52,95,74,72,107,176,185,169,62,168
 ];
 
-//107 transparan
-
 // SCENE
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x202020);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 2000);
 const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -60,18 +70,59 @@ const player = new THREE.Mesh(
 player.position.set(4.7, PLAYER_RADIUS+0.03, -3.3);
 scene.add(player);
 
-// MOVEMENT
+// MOVEMENT KEYS
 const speed = 0.005;
 const keys = { w:false, s:false, a:false, d:false };
 
 document.addEventListener("keydown", e=>{
-    if(keys.hasOwnProperty(e.code.toLowerCase().replace("key","")))
-        keys[e.code.toLowerCase().replace("key","")] = true;
+    const k = e.code.toLowerCase().replace("key","");
+    if(keys.hasOwnProperty(k)) keys[k] = true;
+});
+document.addEventListener("keyup", e=>{
+    const k = e.code.toLowerCase().replace("key","");
+    if(keys.hasOwnProperty(k)) keys[k] = false;
 });
 
-document.addEventListener("keyup", e=>{
-    if(keys.hasOwnProperty(e.code.toLowerCase().replace("key","")))
-        keys[e.code.toLowerCase().replace("key","")] = false;
+// CAMERA MODE
+let firstPerson = false;
+document.addEventListener("keydown", e=>{
+    if(e.code === "KeyP") firstPerson = !firstPerson;
+});
+
+// MOUSE CONTROL
+let isMouseDown=false, lastX=0, lastY=0;
+
+// Third-person orbit rot
+let camRotationX=0.3, camRotationY=0;
+
+// First-person yaw/pitch
+let yaw=0, pitch=0;
+const PITCH_LIMIT = Math.PI/2 - 0.01;
+
+document.addEventListener("mousedown", e=>{
+    isMouseDown=true;
+    lastX=e.clientX;
+    lastY=e.clientY;
+});
+document.addEventListener("mouseup", ()=>{ isMouseDown=false; });
+
+document.addEventListener("mousemove", e=>{
+    if(!isMouseDown) return;
+
+    const dx = (e.clientX-lastX)*0.002;
+    const dy = (e.clientY-lastY)*0.002;
+    lastX=e.clientX;
+    lastY=e.clientY;
+
+    if(firstPerson){
+        yaw -= dx;
+        pitch -= dy;
+        pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch));
+    }else{
+        camRotationY -= dx;
+        camRotationX += dy;
+        camRotationX = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, camRotationX));
+    }
 });
 
 // LOAD MAP + BVH
@@ -82,35 +133,32 @@ loader.load("assets/skeld.glb", gltf=>{
     const map = gltf.scene;
     scene.add(map);
 
-    map.traverse(obj =>{
-      if (!obj.isMesh) return;
+    map.traverse(obj=>{
+        if(!obj.isMesh) return;
 
-      const match = obj.name.match(/\d+/);
-      if (!match) return;
+        const match = obj.name.match(/\d+/);
+        if(!match) return;
 
-      const id = parseInt(match[0]);
-      if (!wallIDs.includes(id)) return;
+        const id = parseInt(match[0]);
+        if(!wallIDs.includes(id)) return;
 
-      obj.material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        obj.material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 
-      obj.geometry.computeBoundsTree();
-
-      staticCollidableObjects.push(obj);
+        obj.geometry.computeBoundsTree();
+        staticCollidableObjects.push(obj);
     });
 
     updateCamera();
     animate();
 });
 
-// SPHERE vs MESH BVH COLLISION
-function sphereMeshCollision(pos) {
-
-    for (let wall of staticCollidableObjects) {
+// SPHERE COLLISION
+function sphereMeshCollision(pos){
+    for (let wall of staticCollidableObjects){
         wall.updateMatrixWorld(true);
 
-        const inverseMatrix = wall.matrixWorld.clone().invert();
-
-        const localCenter = pos.clone().applyMatrix4(inverseMatrix);
+        const inverse = wall.matrixWorld.clone().invert();
+        const localCenter = pos.clone().applyMatrix4(inverse);
 
         const scale = new THREE.Vector3();
         wall.getWorldScale(scale);
@@ -118,64 +166,63 @@ function sphereMeshCollision(pos) {
         const localRadius = PLAYER_RADIUS / Math.max(scale.x, scale.y, scale.z);
 
         const localSphere = new THREE.Sphere(localCenter, localRadius);
-
         const hit = wall.geometry.boundsTree.intersectsSphere(localSphere);
 
-        if (hit) return true;
+        if(hit) return true;
     }
-
     return false;
 }
 
-// COLLISION RESPONSE + SLIDING SIMPLE
+// COLLISION RESPONSE
 function smoothCollisionResponse(oldPos, newPos){
-
-    if (!sphereMeshCollision(newPos)){
-        return newPos;
-    }
+    if(!sphereMeshCollision(newPos)) return newPos;
 
     const xOnly = newPos.clone();
     xOnly.z = oldPos.z;
-    if (!sphereMeshCollision(xOnly)){
-        return xOnly;
-    }
+    if(!sphereMeshCollision(xOnly)) return xOnly;
 
     const zOnly = newPos.clone();
     zOnly.x = oldPos.x;
-    if (!sphereMeshCollision(zOnly)){
-        return zOnly;
-    }
+    if(!sphereMeshCollision(zOnly)) return zOnly;
 
     return oldPos;
 }
 
-// CAMERA CONTROL
-let isMouseDown=false, lastX=0, lastY=0, camRotationX=0.3, camRotationY=0;
-
-document.addEventListener("mousedown", e=>{ isMouseDown=true; lastX=e.clientX; lastY=e.clientY; });
-document.addEventListener("mouseup", ()=>{ isMouseDown=false; });
-document.addEventListener("mousemove", e=>{
-    if(!isMouseDown) return;
-
-    const dx = (e.clientX-lastX)*0.01;
-    const dy = (e.clientY-lastY)*0.01;
-    lastX=e.clientX; lastY=e.clientY;
-
-    camRotationY -= dx;
-    camRotationX += dy;
-    camRotationX = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, camRotationX));
-});
-
+// CAMERA UPDATE
 function updateCamera(){
-    const center = new THREE.Vector3(player.position.x, 0, player.position.z);
-    const distance = 0.5;
+    if(firstPerson){
+        const eye = player.position.clone();
+        eye.y += player.position.y;
+        camera.position.copy(eye);
 
-    const x = center.x + distance * Math.cos(camRotationX) * Math.sin(camRotationY);
-    const y = center.y + distance * Math.sin(camRotationX);
-    const z = center.z + distance * Math.cos(camRotationX) * Math.cos(camRotationY);
+        const forward = new THREE.Vector3(
+            Math.sin(yaw)*Math.cos(pitch),
+            Math.sin(pitch),
+            Math.cos(yaw)*Math.cos(pitch)
+        );
 
-    camera.position.set(x,y,z);
-    camera.lookAt(center);
+        camera.lookAt(eye.clone().add(forward));
+    }else{
+        const center = new THREE.Vector3(player.position.x, 0, player.position.z);
+        const dist = 2;
+
+        const x = center.x + dist*Math.cos(camRotationX)*Math.sin(camRotationY);
+        const y = center.y + dist*Math.sin(camRotationX);
+        const z = center.z + dist*Math.cos(camRotationX)*Math.cos(camRotationY);
+        camera.position.set(x,y,z);
+        camera.lookAt(center);
+    }
+}
+
+// FPS DIRECTION
+function getFPSDirection(){
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    dir.y = 0;
+    return dir.normalize();
+}
+function getFPSRight(fwd){
+    return new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0));
 }
 
 // LOOP
@@ -185,10 +232,20 @@ function animate(){
     const oldPos = player.position.clone();
     const newPos = oldPos.clone();
 
-    if (keys.w) newPos.z -= speed;
-    if (keys.s) newPos.z += speed;
-    if (keys.a) newPos.x -= speed;
-    if (keys.d) newPos.x += speed;
+    if(firstPerson){
+        const fwd = getFPSDirection();
+        const right = getFPSRight(fwd);
+
+        if(keys.w) newPos.addScaledVector(fwd, speed);
+        if(keys.s) newPos.addScaledVector(fwd, -speed);
+        if(keys.a) newPos.addScaledVector(right, -speed);
+        if(keys.d) newPos.addScaledVector(right, speed);
+    }else{
+        if(keys.w) newPos.z -= speed;
+        if(keys.s) newPos.z += speed;
+        if(keys.a) newPos.x -= speed;
+        if(keys.d) newPos.x += speed;
+    }
 
     const finalPos = smoothCollisionResponse(oldPos, newPos);
     player.position.copy(finalPos);
@@ -204,6 +261,5 @@ window.addEventListener("resize", ()=>{
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
-
 </body>
 </html>
