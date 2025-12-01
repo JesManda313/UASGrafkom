@@ -32,6 +32,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'GLTFLoader';
+import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.167/examples/jsm/loaders/RGBELoader.js';
 import {
   acceleratedRaycast,
   computeBoundsTree,
@@ -44,14 +45,19 @@ THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
 // WALL LIST
 const wallIDs = [
-  137,139,141,143,64,59,128,32,80,79,
-  105,58,78,44,43,25,128,23,56,66,27,64,
+  137,139,141,143,64,59,128,32,80,79, 18, 164, 188,
+  105,58,78,44,43,25,128,23,56,66,27,64,33,87,123,
   60,37,115,54,118,8,93,52,95,74,72,107,176,185,169,62,168
 ];
 
 // SCENE
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x202020);
+// scene.background = new THREE.Color(0x202020);
+// scene.background = new THREE.Color(0x000010);
+new RGBELoader().load("assets/space.hdr", tex=>{
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    scene.background = tex;
+});
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 2000);
 const renderer = new THREE.WebGLRenderer({ antialias:true });
@@ -136,13 +142,36 @@ loader.load("assets/skeld.glb", gltf=>{
     map.traverse(obj=>{
         if(!obj.isMesh) return;
 
+        if(obj.name === "Object_6" || obj.name === "Object_87"){
+            obj.visible = false;
+            return;
+        }
+
+        if(obj.name === "Object_107"){
+            const loader = new THREE.TextureLoader();
+            const envTex = loader.load("assets/space.jpg");
+            envTex.mapping = THREE.EquirectangularReflectionMapping;
+
+            obj.material = new THREE.MeshPhysicalMaterial({
+                color: 0x88ccee,
+                transparent: true,
+                opacity: 0.45,
+                roughness: 0.05,
+                metalness: 0.1,
+                reflectivity: 0.9,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.05,
+                envMap: envTex
+            });
+        }
+
         const match = obj.name.match(/\d+/);
         if(!match) return;
 
         const id = parseInt(match[0]);
         if(!wallIDs.includes(id)) return;
 
-        obj.material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        // obj.material = new THREE.MeshStandardMaterial({ color: 0xff0000 }); //aktifin buat debugging
 
         obj.geometry.computeBoundsTree();
         staticCollidableObjects.push(obj);
@@ -192,7 +221,6 @@ function smoothCollisionResponse(oldPos, newPos){
 function updateCamera(){
     if(firstPerson){
         const eye = player.position.clone();
-        eye.y += player.position.y;
         camera.position.copy(eye);
 
         const forward = new THREE.Vector3(
