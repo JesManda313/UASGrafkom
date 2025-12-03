@@ -29,6 +29,44 @@
         ">
         Click P to switch Camera
     </div>
+    <div id="pos"
+        style="
+        position:fixed;
+        top:35px;
+        left:10px;
+        color:#00ff88;
+        font-family:Arial;
+        font-size:14px;
+        z-index:10;
+        user-select:none;
+        ">
+        X: 0 | Z: 0
+    </div>
+    <div id="dir"
+    style="
+        position:fixed;
+        top:60px;
+        left:10px;
+        color:#00bbff;
+        font-family:Arial;
+        font-size:14px;
+        z-index:10;
+        user-select:none;
+        ">
+        Direction: 0 / 0
+    </div>
+    <div id="camButtons"
+        style="
+        position:fixed; 
+        top:100px; 
+        left:10px;
+        display:flex;
+        flex-direction:column;
+        gap:4px;
+        z-index:20;
+        ">
+    </div>
+
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'GLTFLoader';
@@ -49,6 +87,59 @@ const wallIDs = [
   105,58,78,44,43,25,128,23,56,66,27,64,33,87,123,
   60,37,115,54,118,8,93,52,95,74,72,107,176,185,169,62,168
 ];
+
+// camera scene
+const cctvCameras = [
+  { name: "Scene 1 Emergency",  x:4.69, z:-3.34, yaw:180, pitch:0,  height:0.06 },
+  { name: "Scene 2 Chair",      x:6.31, z:-3.40, yaw:150, pitch:0,  height:0.06 },
+  { name: "Scene 3 Electric",   x:3.49, z:-1.67, yaw:-160, pitch:0, height:0.06 },
+  { name: "Scene 4 Scan",       x:5.82, z:-1.81, yaw:-141, pitch:0, height:0.06 },
+  { name: "Scene 5 Security",   x:2.38, z:-2.43, yaw:175, pitch:0,  height:0.06 },
+  { name: "Scene 6 Hallway",    x:1.78, z:-2.54, yaw:-90, pitch:0,  height:0.06 },
+  { name: "Scene 7 Hands",      x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.06 },
+  { name: "Scene 8 Hallway",    x:1.78, z:-2.54, yaw:-90, pitch:0,  height:0.06 },
+  { name: "Scene 9 Hands",      x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.06 },
+  { name: "Scene 10 Empty",     x:0.96, z:-2.97, yaw:-5.5, pitch:0, height:0.06 },
+  { name: "Scene 11 Hands",     x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.06 },
+  { name: "Scene 12 Peek",      x:0.73, z:-2.31, yaw:180, pitch:0,  height:0.06 },
+  { name: "Scene 13 Top",       x:0.68, z:-2.55, yaw:90,  pitch:-90, height:0.4 },
+  { name: "Scene 14 Empty",     x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.06 },
+  { name: "Scene 15 Vent",      x:0.82, z:-2.06, yaw:133, pitch:0,  height:0.06 },
+  { name: "Scene 16 Door",      x:1.20, z:-2.20, yaw:-92.5,pitch:0, height:0.06 },
+];
+let cctvYaw = 0;
+let cctvPitch = 0;
+
+//pindah kamera
+let cctvIndex = -1;
+function setUIVisibility(isVisible) {
+    const visibility = isVisible ? "visible" : "hidden";
+    document.getElementById("pos").style.visibility  = visibility;
+    document.getElementById("dir").style.visibility  = visibility;
+    document.getElementById("hint").style.visibility = visibility;
+    document.getElementById("camButtons").style.visibility = visibility;
+}
+function goToCCTV(i){
+    cctvIndex = i;
+    firstPerson = false;
+
+    const cam = cctvCameras[i];
+    cctvYaw   = cam.yaw * Math.PI / 180;
+    cctvPitch = cam.pitch * Math.PI / 180;
+    setUIVisibility(false);
+}
+
+const container = document.getElementById("camButtons");
+cctvCameras.forEach((cam, i)=>{
+    const b = document.createElement("button");
+    b.innerText = (i+1) + ". " + cam.name;
+    b.style.padding = "3px 8px";
+    b.style.cursor = "pointer";
+    b.onclick = ()=> goToCCTV(i);
+    container.appendChild(b);
+});
+
+
 
 // SCENE
 const scene = new THREE.Scene();
@@ -92,7 +183,21 @@ document.addEventListener("keyup", e=>{
 // CAMERA MODE
 let firstPerson = false;
 document.addEventListener("keydown", e=>{
-    if(e.code === "KeyP") firstPerson = !firstPerson;
+    if(e.code === "KeyP") {
+        if (cctvIndex !== -1) {
+            cctvIndex = -1;      // keluar dari CCTV
+            firstPerson = true;  // masuk ke mode FPS
+
+            setUIVisibility(true);
+        } else {
+            firstPerson = !firstPerson;
+        }
+    }
+    if(e.code === "KeyX") {
+        cctvIndex = -1;          // matikan CCTV
+        firstPerson = false;     // paksa kamera jadi 3rd-person orbit
+        setUIVisibility(true);   // semua UI tampil
+    }
 });
 
 // MOUSE CONTROL
@@ -119,6 +224,15 @@ document.addEventListener("mousemove", e=>{
     const dy = (e.clientY-lastY)*0.002;
     lastX=e.clientX;
     lastY=e.clientY;
+    //Aktifkan kalau mau debuging biar bisa gerakin camera saat pindah scene
+    // if (cctvIndex !== -1) {
+    //     cctvYaw   -= dx;
+    //     cctvPitch -= dy;
+
+    //     // Batas pitch agar tidak terbalik
+    //     cctvPitch = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, cctvPitch));
+    //     return;
+    // }
 
     if(firstPerson){
         yaw -= dx;
@@ -219,6 +333,25 @@ function smoothCollisionResponse(oldPos, newPos){
 
 // CAMERA UPDATE
 function updateCamera(){
+    if (cctvIndex !== -1) {
+        const cam = cctvCameras[cctvIndex];
+
+        camera.position.set(cam.x, cam.height, cam.z);
+
+        const dir = new THREE.Vector3(
+            Math.sin(cctvYaw) * Math.cos(cctvPitch),
+            Math.sin(cctvPitch),
+            Math.cos(cctvYaw) * Math.cos(cctvPitch)
+        );
+
+        camera.lookAt(
+            cam.x + dir.x,
+            cam.height + dir.y,
+            cam.z + dir.z
+        );
+        return;
+    }
+
     if(firstPerson){
         const eye = player.position.clone();
         camera.position.copy(eye);
@@ -278,9 +411,25 @@ function animate(){
     const finalPos = smoothCollisionResponse(oldPos, newPos);
     player.position.copy(finalPos);
 
+    // ⬇⬇ Tambahan untuk menampilkan lokasi sphere ⬇⬇
+    document.getElementById("pos").innerText =
+        "X: " + player.position.x.toFixed(2) +
+        " | Z: " + player.position.z.toFixed(2);
+
+    const v = new THREE.Vector3();
+    camera.getWorldDirection(v);
+
+    // kalkulasi sudut yaw & pitch dalam derajat
+    const yawDeg   = Math.atan2(v.x, v.z) * 180 / Math.PI;        // horizontal
+    const pitchDeg = Math.asin(v.y) * 180 / Math.PI;              // vertikal
+
+    document.getElementById("dir").innerText =
+        "Yaw: " + yawDeg.toFixed(1) + "°  |  Pitch: " + pitchDeg.toFixed(1) + "°";
+
     updateCamera();
     renderer.render(scene, camera);
 }
+
 
 // RESIZE
 window.addEventListener("resize", ()=>{
