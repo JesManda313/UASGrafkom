@@ -1,442 +1,329 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Among Us</title>
+  <meta charset="UTF-8" />
+  <title>Skeld — Among Us Demo</title>
+  <style>
+    body { margin:0; overflow:hidden; background:#000; }
+    #hint, #pos, #dir { position:fixed; left:10px; font-family:Arial; z-index:10; user-select:none; }
+    #hint { top:10px; color:#fff; font-size:14px; }
+    #pos { top:35px; color:#00ff88; font-size:14px; }
+    #dir { top:60px; color:#00bbff; font-size:14px; }
+    #camButtons { position:fixed; top:100px; left:10px; display:flex; flex-direction:column; gap:4px; z-index:20; }
+    #camButtons button { padding:3px 8px; cursor:pointer; }
+  </style>
 
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.167/build/three.module.js",
-    "GLTFLoader": "https://cdn.jsdelivr.net/npm/three@0.167/examples/jsm/loaders/GLTFLoader.js",
-    "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.9.2/+esm"
+  <!-- importmap (optional) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.167/build/three.module.js",
+      "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.9.2/+esm"
+    }
   }
-}
-</script>
-
+  </script>
 </head>
-<body style="margin:0; overflow:hidden;">
-    <div id="hint"
-        style="
-        position:fixed;
-        top:10px;
-        left:10px;
-        color:white;
-        font-family:Arial;
-        font-size:14px;
-        z-index:10;
-        user-select:none;
-        ">
-        Click P to switch Camera
-    </div>
-    <div id="pos"
-        style="
-        position:fixed;
-        top:35px;
-        left:10px;
-        color:#00ff88;
-        font-family:Arial;
-        font-size:14px;
-        z-index:10;
-        user-select:none;
-        ">
-        X: 0 | Z: 0
-    </div>
-    <div id="dir"
-    style="
-        position:fixed;
-        top:60px;
-        left:10px;
-        color:#00bbff;
-        font-family:Arial;
-        font-size:14px;
-        z-index:10;
-        user-select:none;
-        ">
-        Direction: 0 / 0
-    </div>
-    <div id="camButtons"
-        style="
-        position:fixed; 
-        top:100px; 
-        left:10px;
-        display:flex;
-        flex-direction:column;
-        gap:4px;
-        z-index:20;
-        ">
-    </div>
+<body>
+  <div id="hint">Click P to switch Camera | X to force 3rd-person</div>
+  <div id="pos">X: 0 | Z: 0</div>
+  <div id="dir">Yaw: 0° | Pitch: 0°</div>
+  <div id="camButtons"></div>
 
-<script type="module">
-import * as THREE from 'three';
-import { GLTFLoader } from 'GLTFLoader';
-import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.167/examples/jsm/loaders/RGBELoader.js';
-import {
-  acceleratedRaycast,
-  computeBoundsTree,
-  disposeBoundsTree,
-} from "three-mesh-bvh";
+  <script type="module">
+  import * as THREE from 'three';
+  import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.167/examples/jsm/loaders/RGBELoader.js';
+  import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.167/examples/jsm/loaders/GLTFLoader.js';
+  import {
+    acceleratedRaycast,
+    computeBoundsTree,
+    disposeBoundsTree
+  } from 'three-mesh-bvh';
+  // patch BVH to three geometry prototype
+  THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+  THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+  THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
-THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
-THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
-THREE.Mesh.prototype.raycast = acceleratedRaycast;
+  // Import player module (local file)
+  import { createPlayer } from './character.js';
 
-// WALL LIST
-const wallIDs = [
-  137,139,141,143,64,59,128,32,80,79, 18, 164, 188,
-  105,58,78,44,43,25,128,23,56,66,27,64,33,87,123,
-  60,37,115,54,118,8,93,52,95,74,72,107,176,185,169,62,168
-];
+  // ---------- Basic scene ----------
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.01, 2000);
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderer.domElement);
+  scene.add(new THREE.AmbientLight(0xffffff, 1));
 
-// camera scene
-const cctvCameras = [
-  { name: "Scene 1 Emergency",  x:4.69, z:-3.20, yaw:180, pitch:-5,  height:0.1 },
-  { name: "Scene 2 Chair",      x:6.31, z:-3.40, yaw:150, pitch:0,  height:0.1 },
-  { name: "Scene 3 Electric",   x:3.49, z:-1.67, yaw:-160, pitch:0, height:0.1 },
-  { name: "Scene 4 Scan",       x:5.82, z:-1.81, yaw:-141, pitch:0, height:0.1 },
-  { name: "Scene 5 Security",   x:2.38, z:-2.43, yaw:175, pitch:0,  height:0.1 },
-  { name: "Scene 6 Hallway",    x:1.78, z:-2.54, yaw:-90, pitch:0,  height:0.1 },
-  { name: "Scene 7 Hands",      x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.1 },
-  { name: "Scene 8 Hallway",    x:1.78, z:-2.54, yaw:-90, pitch:0,  height:0.1 },
-  { name: "Scene 9 Hands",      x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.1 },
-  { name: "Scene 10 Empty",     x:0.96, z:-2.97, yaw:-5.5, pitch:0, height:0.1 },
-  { name: "Scene 11 Hands",     x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.1 },
-  { name: "Scene 12 Peek",      x:0.73, z:-2.31, yaw:180, pitch:0,  height:0.1 },
-  { name: "Scene 13 Top",       x:0.73, z:-2.55, yaw:90,  pitch:-90, height:0.4 },
-  { name: "Scene 14 Empty",     x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.1 },
-  { name: "Scene 15 Vent",      x:0.82, z:-2.06, yaw:133, pitch:0,  height:0.1 },
-  { name: "Scene 16 Door",      x:1.20, z:-2.20, yaw:-92.5,pitch:0, height:0.1 },
-];
-let cctvYaw = 0;
-let cctvPitch = 0;
+  // try to load an HDR background; fallback to color
+  new RGBELoader().load(
+    'assets/space.hdr',
+    tex => { tex.mapping = THREE.EquirectangularReflectionMapping; scene.background = tex; },
+    undefined,
+    () => { scene.background = new THREE.Color(0x000010); }
+  );
 
-//pindah kamera
-let cctvIndex = -1;
-function setUIVisibility(isVisible) {
-    const visibility = isVisible ? "visible" : "hidden";
-    document.getElementById("pos").style.visibility  = visibility;
-    document.getElementById("dir").style.visibility  = visibility;
-    document.getElementById("hint").style.visibility = visibility;
-    document.getElementById("camButtons").style.visibility = visibility;
-}
-function goToCCTV(i){
-    cctvIndex = i;
-    firstPerson = false;
+  // ---------- Variables ----------
+  const PLAYER_RADIUS = 0.03;
+  let staticCollidableObjects = [];
+  let playerObj = null; // will be set after character load
+  let mixer = null;
+  let clock = new THREE.Clock();
 
-    const cam = cctvCameras[i];
-    cctvYaw   = cam.yaw * Math.PI / 180;
-    cctvPitch = cam.pitch * Math.PI / 180;
-    setUIVisibility(false);
-}
+  // WALL IDs array from your original code (used for BVH selection)
+  const wallIDs = [137,139,141,143,64,59,128,32,80,79,18,164,188,105,58,78,44,43,25,128,23,56,66,27,64,33,87,123,60,37,115,54,118,8,93,52,95,74,72,107,176,185,169,62,168];
 
-const container = document.getElementById("camButtons");
-cctvCameras.forEach((cam, i)=>{
-    const b = document.createElement("button");
-    b.innerText = (i+1) + ". " + cam.name;
-    b.style.padding = "3px 8px";
-    b.style.cursor = "pointer";
-    b.onclick = ()=> goToCCTV(i);
-    container.appendChild(b);
-});
+  // ---------- Camera / UI / Controls state ----------
+  const cctvCameras = [
+    { name: "Scene 1 Emergency",  x:4.69, z:-3.20, yaw:180, pitch:-5,  height:0.1 },
+    { name: "Scene 2 Chair",      x:6.31, z:-3.40, yaw:150, pitch:0,  height:0.1 },
+    { name: "Scene 3 Electric",   x:3.49, z:-1.67, yaw:-160, pitch:0, height:0.1 },
+    { name: "Scene 4 Scan",       x:5.82, z:-1.81, yaw:-141, pitch:0, height:0.1 },
+    { name: "Scene 5 Security",   x:2.38, z:-2.43, yaw:175, pitch:0,  height:0.1 },
+    { name: "Scene 6 Hallway",    x:1.78, z:-2.54, yaw:-90, pitch:0,  height:0.1 },
+    { name: "Scene 7 Hands",      x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.1 },
+    { name: "Scene 8 Hallway",    x:1.78, z:-2.54, yaw:-90, pitch:0,  height:0.1 },
+    { name: "Scene 9 Hands",      x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.1 },
+    { name: "Scene 10 Empty",     x:0.96, z:-2.97, yaw:-5.5, pitch:0, height:0.1 },
+    { name: "Scene 11 Hands",     x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.1 },
+    { name: "Scene 12 Peek",      x:0.73, z:-2.31, yaw:180, pitch:0,  height:0.1 },
+    { name: "Scene 13 Top",       x:0.73, z:-2.55, yaw:90,  pitch:-90, height:0.4 },
+    { name: "Scene 14 Empty",     x:0.96, z:-2.97, yaw:-168, pitch:0, height:0.1 },
+    { name: "Scene 15 Vent",      x:0.82, z:-2.06, yaw:133, pitch:0,  height:0.1 },
+    { name: "Scene 16 Door",      x:1.20, z:-2.20, yaw:-92.5,pitch:0, height:0.1 },
+  ];
 
+  let cctvIndex = -1;
+  function setUIVisibility(isVisible){
+    const v = isVisible ? 'visible' : 'hidden';
+    document.getElementById('pos').style.visibility = v;
+    document.getElementById('dir').style.visibility = v;
+    document.getElementById('hint').style.visibility = v;
+    document.getElementById('camButtons').style.visibility = v;
+  }
 
+  // populate camera buttons
+  const camContainer = document.getElementById('camButtons');
+  cctvCameras.forEach((cam,i)=>{
+    const b = document.createElement('button');
+    b.innerText = (i+1)+'. '+cam.name;
+    b.onclick = ()=> { cctvIndex = i; firstPerson=false; setUIVisibility(false); };
+    camContainer.appendChild(b);
+  });
 
-// SCENE
-const scene = new THREE.Scene();
-// scene.background = new THREE.Color(0x202020);
-// scene.background = new THREE.Color(0x000010);
-new RGBELoader().load("assets/space.hdr", tex=>{
-    tex.mapping = THREE.EquirectangularReflectionMapping;
-    scene.background = tex;
-});
+  // ---------- Movement & input ----------
+  const speed = 0.005;
+  const keys = { w:false, s:false, a:false, d:false };
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 2000);
-const renderer = new THREE.WebGLRenderer({ antialias:true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-scene.add(new THREE.AmbientLight(0xffffff, 1));
-
-// PLAYER
-const PLAYER_RADIUS = 0.03;
-
-const player = new THREE.Mesh(
-    new THREE.SphereGeometry(PLAYER_RADIUS, 32, 32),
-    new THREE.MeshStandardMaterial({ color: 0xff4444 })
-);
-
-player.position.set(4.7, PLAYER_RADIUS+0.03, -3.3);
-scene.add(player);
-
-// MOVEMENT KEYS
-const speed = 0.005;
-const keys = { w:false, s:false, a:false, d:false };
-
-document.addEventListener("keydown", e=>{
-    const k = e.code.toLowerCase().replace("key","");
-    if(keys.hasOwnProperty(k)) keys[k] = true;
-});
-document.addEventListener("keyup", e=>{
-    const k = e.code.toLowerCase().replace("key","");
+  window.addEventListener('keydown', e=>{
+    if(e.code === 'KeyP'){
+      if(cctvIndex !== -1){ cctvIndex = -1; firstPerson = true; setUIVisibility(true); }
+      else firstPerson = !firstPerson;
+    } else if(e.code === 'KeyX') { cctvIndex = -1; firstPerson=false; setUIVisibility(true); }
+    else {
+      const k = e.code.toLowerCase().replace('key','');
+      if(keys.hasOwnProperty(k)) keys[k] = true;
+    }
+  });
+  window.addEventListener('keyup', e=>{
+    const k = e.code.toLowerCase().replace('key','');
     if(keys.hasOwnProperty(k)) keys[k] = false;
-});
+  });
 
-// CAMERA MODE
-let firstPerson = false;
-document.addEventListener("keydown", e=>{
-    if(e.code === "KeyP") {
-        if (cctvIndex !== -1) {
-            cctvIndex = -1;      // keluar dari CCTV
-            firstPerson = true;  // masuk ke mode FPS
-
-            setUIVisibility(true);
-        } else {
-            firstPerson = !firstPerson;
-        }
-    }
-    if(e.code === "KeyX") {
-        cctvIndex = -1;          // matikan CCTV
-        firstPerson = false;     // paksa kamera jadi 3rd-person orbit
-        setUIVisibility(true);   // semua UI tampil
-    }
-});
-
-// MOUSE CONTROL
-let isMouseDown=false, lastX=0, lastY=0;
-
-// Third-person orbit rot
-let camRotationX=0.3, camRotationY=0;
-
-// First-person yaw/pitch
-let yaw=0, pitch=0;
-const PITCH_LIMIT = Math.PI/2 - 0.01;
-
-document.addEventListener("mousedown", e=>{
-    isMouseDown=true;
-    lastX=e.clientX;
-    lastY=e.clientY;
-});
-document.addEventListener("mouseup", ()=>{ isMouseDown=false; });
-
-document.addEventListener("mousemove", e=>{
+  // mouse controls (for looking / orbit)
+  let isMouseDown=false, lastX=0, lastY=0;
+  let camRotationX = 0.3, camRotationY = 0;
+  let yaw = 0, pitch = 0;
+  const PITCH_LIMIT = Math.PI/2 - 0.01;
+  window.addEventListener('mousedown', e=>{ isMouseDown=true; lastX=e.clientX; lastY=e.clientY; });
+  window.addEventListener('mouseup', ()=> isMouseDown=false);
+  window.addEventListener('mousemove', e=>{
     if(!isMouseDown) return;
-
-    const dx = (e.clientX-lastX)*0.002;
-    const dy = (e.clientY-lastY)*0.002;
-    lastX=e.clientX;
-    lastY=e.clientY;
-    //Aktifkan kalau mau debuging biar bisa gerakin camera saat pindah scene
-    // if (cctvIndex !== -1) {
-    //     cctvYaw   -= dx;
-    //     cctvPitch -= dy;
-
-    //     // Batas pitch agar tidak terbalik
-    //     cctvPitch = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, cctvPitch));
-    //     return;
-    // }
-
+    const dx = (e.clientX-lastX)*0.002, dy = (e.clientY-lastY)*0.002;
+    lastX = e.clientX; lastY = e.clientY;
     if(firstPerson){
-        yaw -= dx;
-        pitch -= dy;
-        pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch));
-    }else{
-        camRotationY -= dx;
-        camRotationX += dy;
-        camRotationX = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, camRotationX));
+      yaw -= dx; pitch -= dy; pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch));
+    } else {
+      camRotationY -= dx; camRotationX += dy;
+      camRotationX = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, camRotationX));
     }
-});
+  });
 
-// LOAD MAP + BVH
-const loader = new GLTFLoader();
-let staticCollidableObjects = [];
+  let firstPerson = false;
 
-loader.load("assets/skeld.glb", gltf=>{
+  // ---------- Load map and BVH ----------
+  const gltfLoader = new GLTFLoader();
+  gltfLoader.load('assets/skeld.glb', gltf=>{
     const map = gltf.scene;
     scene.add(map);
 
     map.traverse(obj=>{
-        if(!obj.isMesh) return;
+      if(!obj.isMesh) return;
 
-        if(obj.name === "Object_6" || obj.name === "Object_87"){
-            obj.visible = false;
-            return;
-        }
+      // hide some objects if desired (from your original code)
+      if(obj.name === 'Object_6' || obj.name === 'Object_87'){
+        obj.visible = false;
+        return;
+      }
 
-        if(obj.name === "Object_107"){
-            const loader = new THREE.TextureLoader();
-            const envTex = loader.load("assets/space.jpg");
-            envTex.mapping = THREE.EquirectangularReflectionMapping;
+      // special material for certain object
+      if(obj.name === 'Object_107'){
+        const texLoader = new THREE.TextureLoader();
+        const envTex = texLoader.load('assets/space.jpg');
+        envTex.mapping = THREE.EquirectangularReflectionMapping;
+        obj.material = new THREE.MeshPhysicalMaterial({
+          color: 0x88ccee, transparent:true, opacity:0.45, roughness:0.05, metalness:0.1,
+          reflectivity:0.9, clearcoat:1.0, clearcoatRoughness:0.05, envMap: envTex
+        });
+      }
 
-            obj.material = new THREE.MeshPhysicalMaterial({
-                color: 0x88ccee,
-                transparent: true,
-                opacity: 0.45,
-                roughness: 0.05,
-                metalness: 0.1,
-                reflectivity: 0.9,
-                clearcoat: 1.0,
-                clearcoatRoughness: 0.05,
-                envMap: envTex
-            });
-        }
+      const m = obj.name.match(/\d+/);
+      if(!m) return;
+      const id = parseInt(m[0]);
+      if(!wallIDs.includes(id)) return;
 
-        const match = obj.name.match(/\d+/);
-        if(!match) return;
-
-        const id = parseInt(match[0]);
-        if(!wallIDs.includes(id)) return;
-
-        // obj.material = new THREE.MeshStandardMaterial({ color: 0xff0000 }); //aktifin buat debugging
-
-        obj.geometry.computeBoundsTree();
-        staticCollidableObjects.push(obj);
+      // prepare BVH
+      obj.geometry.computeBoundsTree();
+      staticCollidableObjects.push(obj);
     });
 
-    updateCamera();
-    animate();
-});
+    // after map loaded, create player
+    (async ()=>{
+        // Mengatur warna awal menjadi HIJAU (#00ff00)
+        playerObj = await createPlayer(scene, new THREE.Vector3(4.7, PLAYER_RADIUS-0.025, -3.3));
+        mixer = playerObj.mixer;
+        // Panggil setColor untuk memastikan material diperbarui (opsional, tetapi baik)
+        // playerObj.setColor("#00ff00"); 
+        updateCamera();
+        animate();
+    })();
+  }, undefined, err=>console.error('load skeld error', err));
 
-// SPHERE COLLISION
-function sphereMeshCollision(pos){
-    for (let wall of staticCollidableObjects){
-        wall.updateMatrixWorld(true);
+  // ---------- collision helpers (sphere vs BVH meshes) ----------
+  function sphereMeshCollision(pos){
+    if(!staticCollidableObjects.length) return false;
+    for(const wall of staticCollidableObjects){
+      wall.updateMatrixWorld(true);
+      const inverse = wall.matrixWorld.clone().invert();
+      const colliderOffset = new THREE.Vector3(0, 0.035, 0);
+      const localCenter = pos.clone().add(colliderOffset).applyMatrix4(inverse);
 
-        const inverse = wall.matrixWorld.clone().invert();
-        const localCenter = pos.clone().applyMatrix4(inverse);
+      const scale = new THREE.Vector3();
+      wall.getWorldScale(scale);
+      const localRadius = PLAYER_RADIUS / Math.max(scale.x, scale.y, scale.z);
+      const localSphere = new THREE.Sphere(localCenter, localRadius);
 
-        const scale = new THREE.Vector3();
-        wall.getWorldScale(scale);
-
-        const localRadius = PLAYER_RADIUS / Math.max(scale.x, scale.y, scale.z);
-
-        const localSphere = new THREE.Sphere(localCenter, localRadius);
-        const hit = wall.geometry.boundsTree.intersectsSphere(localSphere);
-
-        if(hit) return true;
+      const hit = wall.geometry.boundsTree.intersectsSphere(localSphere);
+      if(hit) return true;
     }
     return false;
-}
+  }
 
-// COLLISION RESPONSE
-function smoothCollisionResponse(oldPos, newPos){
+  function smoothCollisionResponse(oldPos, newPos){
     if(!sphereMeshCollision(newPos)) return newPos;
-
-    const xOnly = newPos.clone();
-    xOnly.z = oldPos.z;
-    if(!sphereMeshCollision(xOnly)) return xOnly;
-
-    const zOnly = newPos.clone();
-    zOnly.x = oldPos.x;
-    if(!sphereMeshCollision(zOnly)) return zOnly;
-
+    const xOnly = newPos.clone(); xOnly.z = oldPos.z; if(!sphereMeshCollision(xOnly)) return xOnly;
+    const zOnly = newPos.clone(); zOnly.x = oldPos.x; if(!sphereMeshCollision(zOnly)) return zOnly;
     return oldPos;
-}
+  }
 
-// CAMERA UPDATE
-function updateCamera(){
-    if (cctvIndex !== -1) {
-        const cam = cctvCameras[cctvIndex];
-
-        camera.position.set(cam.x, cam.height, cam.z);
-
-        const dir = new THREE.Vector3(
-            Math.sin(cctvYaw) * Math.cos(cctvPitch),
-            Math.sin(cctvPitch),
-            Math.cos(cctvYaw) * Math.cos(cctvPitch)
-        );
-
-        camera.lookAt(
-            cam.x + dir.x,
-            cam.height + dir.y,
-            cam.z + dir.z
-        );
-        return;
+  // ---------- camera update ----------
+  function updateCamera(){
+    if(cctvIndex !== -1){
+      const cam = cctvCameras[cctvIndex];
+      camera.position.set(cam.x, cam.height, cam.z);
+      const dir = new THREE.Vector3(Math.sin(cam.yaw*Math.PI/180)*Math.cos(cam.pitch*Math.PI/180),
+                                    Math.sin(cam.pitch*Math.PI/180),
+                                    Math.cos(cam.yaw*Math.PI/180)*Math.cos(cam.pitch*Math.PI/180));
+      camera.lookAt(cam.x + dir.x, cam.height + dir.y, cam.z + dir.z);
+      return;
     }
+
+    if(!playerObj) return;
 
     if(firstPerson){
-        const eye = player.position.clone();
-        camera.position.copy(eye);
-
-        const forward = new THREE.Vector3(
-            Math.sin(yaw)*Math.cos(pitch),
-            Math.sin(pitch),
-            Math.cos(yaw)*Math.cos(pitch)
-        );
-
-        camera.lookAt(eye.clone().add(forward));
-    }else{
-        const center = new THREE.Vector3(player.position.x, 0, player.position.z);
-        const dist = 2;
-
-        const x = center.x + dist*Math.cos(camRotationX)*Math.sin(camRotationY);
-        const y = center.y + dist*Math.sin(camRotationX);
-        const z = center.z + dist*Math.cos(camRotationX)*Math.cos(camRotationY);
-        camera.position.set(x,y,z);
-        camera.lookAt(center);
+      const eye = playerObj.mesh.position.clone();
+      camera.position.copy(eye);
+      const forward = new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch), Math.sin(pitch), Math.cos(yaw)*Math.cos(pitch));
+      camera.lookAt(eye.clone().add(forward));
+    } else {
+      const center = new THREE.Vector3(playerObj.mesh.position.x, 0, playerObj.mesh.position.z);
+      const dist = 2;
+      const x = center.x + dist*Math.cos(camRotationX)*Math.sin(camRotationY);
+      const y = center.y + dist*Math.sin(camRotationX);
+      const z = center.z + dist*Math.cos(camRotationX)*Math.cos(camRotationY);
+      camera.position.set(x,y,z);
+      camera.lookAt(center);
     }
-}
+  }
 
-// FPS DIRECTION
-function getFPSDirection(){
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
-    dir.y = 0;
-    return dir.normalize();
-}
-function getFPSRight(fwd){
-    return new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0));
-}
+  function getFPSDirection(){
+    const dir = new THREE.Vector3(); camera.getWorldDirection(dir); dir.y = 0; return dir.normalize();
+  }
+  function getFPSRight(fwd){ return new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)); }
 
-// LOOP
-function animate(){
+  // ---------- main loop ----------
+  function animate(){
     requestAnimationFrame(animate);
 
-    const oldPos = player.position.clone();
+    
+    const delta = clock.getDelta();
+    if(mixer) mixer.update(delta);
+
+    if(!playerObj) {
+      renderer.render(scene, camera);
+      return;
+    }
+
+    const oldPos = playerObj.mesh.position.clone();
     const newPos = oldPos.clone();
+    let moving = false;
 
     if(firstPerson){
-        const fwd = getFPSDirection();
-        const right = getFPSRight(fwd);
-
-        if(keys.w) newPos.addScaledVector(fwd, speed);
-        if(keys.s) newPos.addScaledVector(fwd, -speed);
-        if(keys.a) newPos.addScaledVector(right, -speed);
-        if(keys.d) newPos.addScaledVector(right, speed);
-    }else{
-        if(keys.w) newPos.z -= speed;
-        if(keys.s) newPos.z += speed;
-        if(keys.a) newPos.x -= speed;
-        if(keys.d) newPos.x += speed;
+      const fwd = getFPSDirection();
+      const right = getFPSRight(fwd);
+      if(keys.w){ newPos.addScaledVector(fwd, speed); moving = true; }
+      if(keys.s){ newPos.addScaledVector(fwd, -speed); moving = true; }
+      if(keys.a){ newPos.addScaledVector(right, -speed); moving = true; }
+      if(keys.d){ newPos.addScaledVector(right, speed); moving = true; }
+    } else {
+      if(keys.w){ newPos.z -= speed; moving = true; }
+      if(keys.s){ newPos.z += speed; moving = true; }
+      if(keys.a){ newPos.x -= speed; moving = true; }
+      if(keys.d){ newPos.x += speed; moving = true; }
     }
 
     const finalPos = smoothCollisionResponse(oldPos, newPos);
-    player.position.copy(finalPos);
+    playerObj.mesh.position.copy(finalPos);
 
-    // ⬇⬇ Tambahan untuk menampilkan lokasi sphere ⬇⬇
-    document.getElementById("pos").innerText =
-        "X: " + player.position.x.toFixed(2) +
-        " | Z: " + player.position.z.toFixed(2);
+    // rotate player model to movement direction when moving (simple yaw)
+    if(moving){
+      const moveDir = finalPos.clone().sub(oldPos).setY(0);
+      if(moveDir.lengthSq() > 1e-6){
+        const targetYaw = Math.atan2(moveDir.x, moveDir.z);
+        // smooth rotate
+        playerObj.mesh.rotation.y += THREE.MathUtils.damp((targetYaw - playerObj.mesh.rotation.y + Math.PI) % (Math.PI*2) - Math.PI, 0, 0.12, 1/60);
+      }
+    }
 
-    const v = new THREE.Vector3();
+    // update animation state
+    playerObj.setWalking(moving);
+
+    // update UI
+    document.getElementById('pos').innerText =
+      "X: " + playerObj.mesh.position.x.toFixed(2) + " | Z: " + playerObj.mesh.position.z.toFixed(2);
+    const v = new THREE.Vector3(); 
     camera.getWorldDirection(v);
+    const yawDeg   = Math.atan2(v.x, v.z) * 180 / Math.PI;
+    const pitchDeg = Math.asin(v.y) * 180 / Math.PI;
+    document.getElementById('dir').innerText = "Yaw: " + yawDeg.toFixed(1) + "°  |  Pitch: " + pitchDeg.toFixed(1) + "°";
 
-    // kalkulasi sudut yaw & pitch dalam derajat
-    const yawDeg   = Math.atan2(v.x, v.z) * 180 / Math.PI;        // horizontal
-    const pitchDeg = Math.asin(v.y) * 180 / Math.PI;              // vertikal
-
-    document.getElementById("dir").innerText =
-        "Yaw: " + yawDeg.toFixed(1) + "°  |  Pitch: " + pitchDeg.toFixed(1) + "°";
 
     updateCamera();
     renderer.render(scene, camera);
-}
+  }
 
+  // resize
+  window.addEventListener('resize', ()=>{ camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
-// RESIZE
-window.addEventListener("resize", ()=>{
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
-</script>
+  </script>
 </body>
 </html>
