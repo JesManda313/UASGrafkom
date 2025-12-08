@@ -168,7 +168,7 @@
       // special material for certain object
       if(obj.name === 'Object_107'){
         const texLoader = new THREE.TextureLoader();
-        const envTex = texLoader.load('assets/space.jpg');
+        const envTex = texLoader.load('assets/space.hdr');
         envTex.mapping = THREE.EquirectangularReflectionMapping;
         obj.material = new THREE.MeshPhysicalMaterial({
           color: 0x88ccee, transparent:true, opacity:0.45, roughness:0.05, metalness:0.1,
@@ -188,12 +188,10 @@
 
     // after map loaded, create player
     (async ()=>{
-        // Mengatur warna awal menjadi HIJAU (#00ff00)
         playerObj = await createPlayer(scene, new THREE.Vector3(4.7, PLAYER_RADIUS-0.025, -3.3));
         mixer = playerObj.mixer;
-        // Panggil setColor untuk memastikan material diperbarui (opsional, tetapi baik)
-        // playerObj.setColor("#00ff00"); 
         updateCamera();
+        console.log(playerObj);
         animate();
     })();
   }, undefined, err=>console.error('load skeld error', err));
@@ -263,16 +261,14 @@
   // ---------- main loop ----------
   function animate(){
     requestAnimationFrame(animate);
-
     
     const delta = clock.getDelta();
-    if(mixer) mixer.update(delta);
-
-    if(!playerObj) {
-      renderer.render(scene, camera);
-      return;
+    if(!playerObj){
+        renderer.render(scene, camera);
+        return;
     }
 
+    // generate movement data
     const oldPos = playerObj.mesh.position.clone();
     const newPos = oldPos.clone();
     let moving = false;
@@ -280,42 +276,56 @@
     if(firstPerson){
       const fwd = getFPSDirection();
       const right = getFPSRight(fwd);
-      if(keys.w){ newPos.addScaledVector(fwd, speed); moving = true; }
-      if(keys.s){ newPos.addScaledVector(fwd, -speed); moving = true; }
-      if(keys.a){ newPos.addScaledVector(right, -speed); moving = true; }
-      if(keys.d){ newPos.addScaledVector(right, speed); moving = true; }
+
+      const dir = new THREE.Vector3();
+
+      if(keys.w) dir.add(fwd);
+      if(keys.s) dir.sub(fwd);
+      if(keys.a) dir.sub(right);
+      if(keys.d) dir.add(right);
+
+      if(dir.lengthSq() > 0){
+          dir.normalize();
+          newPos.addScaledVector(dir, speed);
+          moving = true;
+      }
+
     } else {
-      if(keys.w){ newPos.z -= speed; moving = true; }
-      if(keys.s){ newPos.z += speed; moving = true; }
-      if(keys.a){ newPos.x -= speed; moving = true; }
-      if(keys.d){ newPos.x += speed; moving = true; }
-    }
 
-    const finalPos = smoothCollisionResponse(oldPos, newPos);
-    playerObj.mesh.position.copy(finalPos);
+      const dir = new THREE.Vector3();
 
-    // rotate player model to movement direction when moving (simple yaw)
-    if(moving){
-      const moveDir = finalPos.clone().sub(oldPos).setY(0);
-      if(moveDir.lengthSq() > 1e-6){
-        const targetYaw = Math.atan2(moveDir.x, moveDir.z);
-        // smooth rotate
-        playerObj.mesh.rotation.y += THREE.MathUtils.damp((targetYaw - playerObj.mesh.rotation.y + Math.PI) % (Math.PI*2) - Math.PI, 0, 0.12, 1/60);
+      if(keys.w) dir.z -= 1;
+      if(keys.s) dir.z += 1;
+      if(keys.a) dir.x -= 1;
+      if(keys.d) dir.x += 1;
+
+      if(dir.lengthSq() > 0){
+          dir.normalize();
+          newPos.addScaledVector(dir, speed);
+          moving = true;
       }
     }
 
-    // update animation state
-    playerObj.setWalking(moving);
+
+    const finalPos = smoothCollisionResponse(oldPos, newPos);
+
+    // CALL UPDATE ON PLAYER MODULE
+    playerObj.update(delta, {
+        position: finalPos,
+        oldPosition: oldPos,
+        isMoving: moving
+    });
 
     // update UI
     document.getElementById('pos').innerText =
-      "X: " + playerObj.mesh.position.x.toFixed(2) + " | Z: " + playerObj.mesh.position.z.toFixed(2);
-    const v = new THREE.Vector3(); 
+      "X: " + finalPos.x.toFixed(2) + " | Z: " + finalPos.z.toFixed(2);
+
+    const v = new THREE.Vector3();
     camera.getWorldDirection(v);
     const yawDeg   = Math.atan2(v.x, v.z) * 180 / Math.PI;
     const pitchDeg = Math.asin(v.y) * 180 / Math.PI;
-    document.getElementById('dir').innerText = "Yaw: " + yawDeg.toFixed(1) + "°  |  Pitch: " + pitchDeg.toFixed(1) + "°";
-
+    document.getElementById('dir').innerText =
+      "Yaw: " + yawDeg.toFixed(1) + "° | Pitch: " + pitchDeg.toFixed(1) + "°";
 
     updateCamera();
     renderer.render(scene, camera);
