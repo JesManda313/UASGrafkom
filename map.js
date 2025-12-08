@@ -37,8 +37,7 @@ export async function loadMap(wallIDs){
 
                 obj.geometry.computeBoundsTree();
                 staticCollidableObjects.push(obj);
-            });
-
+            });        
             resolve({ map, staticCollidableObjects });
         }, undefined, err=>reject(err));
     });

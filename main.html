@@ -238,27 +238,28 @@ function updateCamera(){
 	if(!playerObj) return;
 
 	if(firstPerson){
-	const eye = playerObj.mesh.position.clone();
-	camera.position.copy(eye);
-	const forward = new THREE.Vector3(
-		Math.sin(yaw)*Math.cos(pitch),
-		Math.sin(pitch),
-		Math.cos(yaw)*Math.cos(pitch)
-	);
-	camera.lookAt(eye.clone().add(forward));
+		if(playerObj && playerObj.mesh) playerObj.mesh.visible = false;
+		const eye = playerObj.mesh.position.clone();
+		camera.position.set(eye.x, eye.y + PLAYER_RADIUS*2, eye.z);
+		const forward = new THREE.Vector3(
+			Math.sin(yaw)*Math.cos(pitch),
+			Math.sin(pitch),
+			Math.cos(yaw)*Math.cos(pitch)
+		);
+		camera.lookAt(eye.clone().add(forward));
 	} else {
-	const center = new THREE.Vector3(
-		playerObj.mesh.position.x,
-		0,
-		playerObj.mesh.position.z
-	);
-	const dist = 2;
-	const x = center.x + dist*Math.cos(camRotationX)*Math.sin(camRotationY);
-	const y = center.y + dist*Math.sin(camRotationX);
-	const z = center.z + dist*Math.cos(camRotationX)*Math.cos(camRotationY);
+		const center = new THREE.Vector3(
+			playerObj.mesh.position.x,
+			0,
+			playerObj.mesh.position.z
+		);
+		const dist = 2;
+		const x = center.x + dist*Math.cos(camRotationX)*Math.sin(camRotationY);
+		const y = center.y + dist*Math.sin(camRotationX);
+		const z = center.z + dist*Math.cos(camRotationX)*Math.cos(camRotationY);
 
-	camera.position.set(x,y,z);
-	camera.lookAt(center);
+		camera.position.set(x,y,z);
+		camera.lookAt(center);
 	}
 }
 
