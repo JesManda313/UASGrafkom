@@ -1,6 +1,5 @@
 import * as THREE from "three";
 
-const PLAYER_RADIUS = 0.03;
 const TARGET_YAW = 150.7 * Math.PI / 180;
 const YAWEND = 135.7 * Math.PI / 180;
 const CHARACTER_SPEED = 0.1; 
@@ -9,55 +8,55 @@ const SMOOTH_FACTOR = 0.05;
 const scene2MovementData = [
     { 
         color: "#ff0000", 
-        start: new THREE.Vector3(6.14, PLAYER_RADIUS - 0.025, -3.77), 
+        start: new THREE.Vector3(6.14, 0.005, -3.77), 
         path: [ 
-            new THREE.Vector3(6.33, PLAYER_RADIUS - 0.025, -3.83),
-            new THREE.Vector3(6.45, PLAYER_RADIUS - 0.025, -4.28), 
+            new THREE.Vector3(6.33, 0.005, -3.83),
+            new THREE.Vector3(6.45, 0.005, -4.28), 
         ],
         yawEnd: 154.6 * Math.PI / 180 
     },
     { 
         color: "#0000ff", 
-        start: new THREE.Vector3(6.22, PLAYER_RADIUS - 0.025, -3.66), 
+        start: new THREE.Vector3(6.22, 0.005, -3.66), 
         path: [ 
-            new THREE.Vector3(6.22, PLAYER_RADIUS - 0.025, -3.66),
-            new THREE.Vector3(6.40, PLAYER_RADIUS - 0.025, -3.58),
-            new THREE.Vector3(6.70, PLAYER_RADIUS - 0.025, -3.61),
-            new THREE.Vector3(6.72, PLAYER_RADIUS - 0.025, -3.92),
-            new THREE.Vector3(6.95, PLAYER_RADIUS - 0.025, -3.92) 
+            new THREE.Vector3(6.22, 0.005, -3.66),
+            new THREE.Vector3(6.40, 0.005, -3.58),
+            new THREE.Vector3(6.70, 0.005, -3.61),
+            new THREE.Vector3(6.72, 0.005, -3.92),
+            new THREE.Vector3(6.95, 0.005, -3.92) 
         ],
         yawEnd: 155.4 * Math.PI / 180
     },
     { 
         color: "#ea00ff", 
-        start: new THREE.Vector3(6.14, PLAYER_RADIUS - 0.025, -3.77), 
+        start: new THREE.Vector3(6.14, 0.005, -3.77), 
         path: [ 
-            { pos: new THREE.Vector3(6.14, PLAYER_RADIUS - 0.025, -3.77), wait: 5.0 },
-            new THREE.Vector3(6.44, PLAYER_RADIUS - 0.025, -3.57), 
-            new THREE.Vector3(6.64, PLAYER_RADIUS - 0.025, -3.18) 
+            { pos: new THREE.Vector3(6.14, 0.005, -3.77), wait: 5.0 },
+            new THREE.Vector3(6.44, 0.005, -3.57), 
+            new THREE.Vector3(6.64, 0.005, -3.18) 
         ],
         yawEnd: 33.8 * Math.PI / 180
     },
     { 
         color: "#00fbff", 
-        start: new THREE.Vector3(6.05, PLAYER_RADIUS - 0.025, -3.77), 
+        start: new THREE.Vector3(6.05, 0.005, -3.77), 
         path: [ 
             { 
-                pos: new THREE.Vector3(6.14, PLAYER_RADIUS - 0.025, -3.77), 
+                pos: new THREE.Vector3(6.14, 0.005, -3.77), 
                 wait: 8.0,
                 yaw: 0 * Math.PI / 180 
             }, 
             
-            new THREE.Vector3(6.33, PLAYER_RADIUS - 0.025, -3.83), 
+            new THREE.Vector3(6.33, 0.005, -3.83), 
             
             { 
-                pos: new THREE.Vector3(6.36, PLAYER_RADIUS - 0.025, -3.87), 
+                pos: new THREE.Vector3(6.36, 0.005, -3.87), 
                 wait: 4.0, 
                 yaw: TARGET_YAW 
             },
             
-            new THREE.Vector3(6.38, PLAYER_RADIUS - 0.025, -3.65), 
-            new THREE.Vector3(6.50, PLAYER_RADIUS - 0.025, -3.59) 
+            new THREE.Vector3(6.38, 0.005, -3.65), 
+            new THREE.Vector3(6.50, 0.005, -3.59) 
         ],
         yawEnd: YAWEND 
     }

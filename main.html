@@ -49,6 +49,11 @@ import {
     clearScene2, 
     updateScene2
 } from "./Scene/2.js"; 
+import { 
+    initializeScene6, 
+    clearScene6, 
+    updateScene6
+} from "./Scene/6.js"; 
 
 // SCENE
 const scene = new THREE.Scene();
@@ -66,7 +71,7 @@ new RGBELoader().load(
 );
 
 // VARIABLES
-const PLAYER_RADIUS = 0.03;
+const PLAYER_RADIUS = 0.05;
 let staticCollidableObjects = [];
 let playerObj = null;
 let mixer = null;
@@ -117,8 +122,13 @@ cctvCameras.forEach((cam,i)=>{
         // 💡 PANGGILAN FUNGSI SCENE 2 DARI KONTROLER
         if(i === 1){
             initializeScene2(scene, createPlayer, playerObj); 
-        } else {
+        } 
+        else if(i === 5){
+            initializeScene6(scene, createPlayer);
+        }
+        else {
             clearScene2();
+            clearScene6();
         }
     };
     camContainer.appendChild(b);
@@ -130,13 +140,14 @@ const keys = { w:false, a:false, s:false, d:false };
 
 window.addEventListener("keydown", e=>{
     if(e.code === "KeyP"){
-    if(cctvIndex !== -1){ cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); }
+    if(cctvIndex !== -1){ cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); clearScene6();}
     else firstPerson = !firstPerson;
     } else if(e.code === "KeyX"){
     cctvIndex = -1;
     firstPerson = false;
     setUIVisibility(true);
     clearScene2(); // Memastikan Scene 2 dibersihkan
+    clearScene6();
     } else {
     const k = e.code.toLowerCase().replace("key","");
     if(keys.hasOwnProperty(k)) keys[k] = true;
@@ -195,7 +206,7 @@ let firstPerson = false;
 
     scene.add(map);
 
-    playerObj = await createPlayer(scene, new THREE.Vector3(4.7, PLAYER_RADIUS - 0.025, -3.3));
+    playerObj = await createPlayer(scene, new THREE.Vector3(4.7, 0.005, -3.3));
     mixer = playerObj.mixer;
     playerObj.mesh.visible = true;
 
@@ -311,12 +322,13 @@ function animate(){
         return;
     }
 
-    // A. PANGGILAN SCENE 2: Hanya panggil updateScene2(delta)
-    const isScene2Running = updateScene2(delta); 
+    // Scene controller
+        const isScene2Running = updateScene2(delta);
+        const isScene6Running = updateScene6(delta);
 
-    // B. UPDATE PERGERAKAN KARAKTER USER (Hanya jika Scene 2 TIDAK aktif dan tidak di mode CCTV lain)
-    if(!isScene2Running && cctvIndex === -1) {
-        
+        // Player hanya bergerak kalau scene custom tidak aktif
+        if(!isScene2Running && !isScene6Running && cctvIndex === -1) {
+
         const oldPos = playerObj.mesh.position.clone();
         const newPos = oldPos.clone();
         let moving = false;
