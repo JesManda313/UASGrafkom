@@ -71,6 +71,7 @@ let staticCollidableObjects = [];
 let playerObj = null;
 let mixer = null;
 let clock = new THREE.Clock();
+let cameraDistance = 2; 
 
 const wallIDs = [137,139,141,143,64,59,128,32,80,79,18,164,188,105,58,78,44,43,25,128,23,56,66,27,64,33,87,123,60,37,115,54,118,8,93,52,95,74,72,107,176,185,169,62,168];
 
@@ -178,6 +179,12 @@ window.addEventListener("mousemove", e=>{
     }
 });
 
+window.addEventListener("wheel", e => {
+    cameraDistance += e.deltaY * 0.002;
+    cameraDistance = Math.min(Math.max(cameraDistance, 0.3), 4); 
+});
+
+
 let firstPerson = false;
 
 // LOAD MAP
@@ -274,10 +281,9 @@ function updateCamera(){
             0,
             playerObj.mesh.position.z
         );
-        const dist = 2;
-        const x = center.x + dist*Math.cos(camRotationX)*Math.sin(camRotationY);
-        const y = center.y + dist*Math.sin(camRotationX);
-        const z = center.z + dist*Math.cos(camRotationX)*Math.cos(camRotationY);
+        const x = center.x + cameraDistance * Math.cos(camRotationX) * Math.sin(camRotationY);
+        const y = center.y + cameraDistance * Math.sin(camRotationX);
+        const z = center.z + cameraDistance * Math.cos(camRotationX) * Math.cos(camRotationY);
 
         camera.position.set(x,y,z);
         camera.lookAt(center);
@@ -331,12 +337,20 @@ function animate(){
                 moving = true;
             }
         } else {
+            // Arah kamera
+            const forward = new THREE.Vector3();
+            camera.getWorldDirection(forward);
+            forward.y = 0;
+            forward.normalize();
+
+            const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).normalize();
+
             const dir = new THREE.Vector3();
 
-            if(keys.w) dir.z -= 1;
-            if(keys.s) dir.z += 1;
-            if(keys.a) dir.x -= 1;
-            if(keys.d) dir.x += 1;
+            if(keys.w) dir.add(forward);
+            if(keys.s) dir.sub(forward);
+            if(keys.a) dir.sub(right);
+            if(keys.d) dir.add(right);
 
             if(dir.lengthSq() > 0){
                 dir.normalize();
