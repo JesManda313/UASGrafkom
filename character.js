@@ -19,13 +19,16 @@ export async function createPlayer(scene, startPos, color = "#ff0000"){
                     if(obj.isMesh && obj.material){
                         const name = obj.name.toLowerCase();
 
+                        obj.castShadow = true;
+                        obj.receiveShadow = true;
+
                         if(name.includes("cube")){
                             obj.material = new THREE.MeshStandardMaterial({
                                 color: initialColor,
-                                roughness: 0.6,
-                                metalness: 0.2,
-                                emissive: initialColor,
-                                emissiveIntensity: 1,
+                                roughness: 0.7,
+                                metalness: 0.5,
+                                emissive: 0x000000,
+                                emissiveIntensity: 0,
                                 emissiveMap: null
                             });
                             obj.material.map = null;

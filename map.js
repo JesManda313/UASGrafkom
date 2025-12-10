@@ -29,6 +29,12 @@ export async function loadMap(wallIDs){
 
             map.traverse(obj=>{
                 if(!obj.isMesh) return;
+                obj.castShadow = false; // Map tidak casting, hanya menerima
+                obj.receiveShadow = true;
+                obj.material.transparent = false;
+                obj.material.depthWrite = true;
+                obj.material.needsUpdate = true;
+
                 if(obj.name === "Object_6" || obj.name === "Object_87"){
                     obj.visible = false;
                     return;
