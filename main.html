@@ -62,6 +62,25 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 scene.add(new THREE.AmbientLight(0xffffff, 1));
+// Sun Light global
+const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+sun.position.set(0, 5, 0); // tinggi di atas map
+sun.target.position.set(0, 0, 0);
+scene.add(sun);
+scene.add(sun.target);
+
+// Optional: shadow (aman untuk map kecilmu)
+sun.castShadow = true;
+sun.shadow.mapSize.width = 1024;
+sun.shadow.mapSize.height = 1024;
+sun.shadow.camera.near = 0.1;
+sun.shadow.camera.far = 10;
+sun.shadow.camera.left = -5;
+sun.shadow.camera.right = 5;
+sun.shadow.camera.top = 5;
+sun.shadow.camera.bottom = -5;
+const sunHelper = new THREE.DirectionalLightHelper(sun, 0.3, 0xffaa00);
+scene.add(sunHelper);
 
 new RGBELoader().load(
     "assets/space.hdr",
@@ -222,7 +241,7 @@ function sphereMeshCollision(pos){
     wall.updateMatrixWorld(true);
 
     const inverse = wall.matrixWorld.clone().invert();
-    const colliderOffset = new THREE.Vector3(0, 0.035, 0);
+    const colliderOffset = new THREE.Vector3(0, 0.055, 0);
     const localCenter = pos.clone().add(colliderOffset).applyMatrix4(inverse);
 
     const scale = new THREE.Vector3();
