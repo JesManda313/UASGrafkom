@@ -115,6 +115,12 @@
             updateScene12,
             isScene12Active,
         } from "./Scene/12.js"; 
+        import { 
+            initializeScene16, 
+            clearScene16, 
+            updateScene16,
+            isScene16Active,
+        } from "./Scene/16.js"; 
 
         // SCENE
         const scene = new THREE.Scene();
@@ -214,6 +220,7 @@ const camContainer = document.getElementById("camButtons");
                 clearScene12();
                 clearScene14();
                 clearScene15();
+                clearScene16();
 
                 if (i === 1) {
                     initializeScene2(scene, createPlayer, playerObj);
@@ -230,6 +237,9 @@ const camContainer = document.getElementById("camButtons");
                 else if (i === 14) {
                     initializeScene15(scene, createPlayer, playerObj);
                 }
+                else if (i === 15){
+                    initializeScene16(scene, camera,createPlayer);
+                }
             };
             camContainer.appendChild(b);
         });
@@ -240,7 +250,7 @@ const camContainer = document.getElementById("camButtons");
 
         window.addEventListener("keydown", e => {
             if (e.code === "KeyP") {
-                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); clearScene6(); clearScene12(); clearScene14(); clearScene15(); }
+                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); clearScene6(); clearScene12(); clearScene14(); clearScene15(); clearScene16(); }
                 else firstPerson = !firstPerson;
             } else if (e.code === "KeyX") {
                 cctvIndex = -1;
@@ -251,6 +261,7 @@ const camContainer = document.getElementById("camButtons");
                 clearScene12();
                 clearScene14();
                 clearScene15();
+                clearScene16();
             } else {
                 const k = e.code.toLowerCase().replace("key", "");
                 if (keys.hasOwnProperty(k)) keys[k] = true;
@@ -429,7 +440,8 @@ const camContainer = document.getElementById("camButtons");
             // Scene controller
             updateScene2(delta);
             updateScene6(delta);
-        updateScene12(delta);
+            updateScene12(delta);
+            updateScene16(delta);
             const isScene14Running = updateScene14(delta);
             const isScene15Running = updateScene15(delta);
 
@@ -438,6 +450,9 @@ const camContainer = document.getElementById("camButtons");
             !isScene2Active() &&
             !isScene6Active() &&
             !isScene12Active() &&
+            !isScene16Active() &&
+            isScene14Running &&
+            isScene15Running &&
             cctvIndex === -1
         ) {
 
