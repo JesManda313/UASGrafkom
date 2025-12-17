@@ -3,7 +3,7 @@ import * as THREE from "three";
 const CHARACTER_SPEED = 0.2;
 const ROTATION_SPEED = 2.5; 
 
-const lightGreen = "#00ff3cff"; // hijau muda
+const lightGreen = "#00ff3c"; // hijau muda
 
 // Rotasi menghadap target X
 const yawToTarget = Math.atan2((1.00 - 1.74), ( -2.54 - -2.54 )); // arah ke X 1.00
@@ -79,6 +79,7 @@ export async function initializeScene6(scene, camera, createPlayerFunc) {
     // Supaya selalu di depan kamera
     redOverlay.position.z = -0.5;
     camera.add(redOverlay);
+    scene.add(camera);
 
     redOverlay.visible = false;
 

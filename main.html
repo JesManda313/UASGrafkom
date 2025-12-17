@@ -91,13 +91,13 @@
             initializeScene2,
             clearScene2,
             updateScene2,
-    isScene2Active,
+            isScene2Active,
         } from "./Scene/2.js";
         import {
             initializeScene6,
             clearScene6,
             updateScene6,
-    isScene6Active
+            isScene6Active
         } from "./Scene/6.js";
         import {
             initializeScene14,
@@ -109,12 +109,12 @@
             clearScene15,
             updateScene15
         } from "./Scene/15.js";
-import { 
-    initializeScene12, 
-    clearScene12, 
-    updateScene12,
-    isScene12Active,
-} from "./Scene/12.js"; 
+        import { 
+            initializeScene12, 
+            clearScene12, 
+            updateScene12,
+            isScene12Active,
+        } from "./Scene/12.js"; 
 
         // SCENE
         const scene = new THREE.Scene();
@@ -184,7 +184,7 @@ import {
             { name: "Scene 12 Peek", x: 0.73, z: -2.31, yaw: 180, pitch: 0, height: 0.1, id: 12 },
             { name: "Scene 13 Top", x: 0.73, z: -2.55, yaw: 90, pitch: -90, height: 0.4, id: 13 },
             { name: "Scene 14 ke vent", x: 0.96, z: -2.97, yaw: -5.5, pitch: 0, height: 0.1, id: 10 },
-            { name: "Scene 15 Vent", x: 0.88, z: -2.13, yaw: 129.8, pitch: -21.2, height: -1, id: 15 },
+            { name: "Scene 15 Vent", x: 0.88, z: -2.13, yaw: 129.8, pitch: 10.2, height: 0.02, id: 15 },
             { name: "Scene 16 Door", x: 1.20, z: -2.23, yaw: -92.5, pitch: 0, height: 0.07, id: 16 },
         ];
 
@@ -211,6 +211,7 @@ const camContainer = document.getElementById("camButtons");
                 // SAFETY: Clear scenes first
                 clearScene2();
                 clearScene6();
+                clearScene12();
                 clearScene14();
                 clearScene15();
 
@@ -218,7 +219,10 @@ const camContainer = document.getElementById("camButtons");
                     initializeScene2(scene, createPlayer, playerObj);
                 }
                 else if (i === 5) {
-                    initializeScene6(scene, createPlayer);
+                    initializeScene6(scene, camera, createPlayer);
+                }
+                else if (i === 11){
+                    initializeScene12(scene, createPlayer);
                 }
                 else if (i === 13) {
                     initializeScene14(scene, createPlayer, playerObj);
@@ -236,7 +240,7 @@ const camContainer = document.getElementById("camButtons");
 
         window.addEventListener("keydown", e => {
             if (e.code === "KeyP") {
-                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); clearScene6(); clearScene14(); clearScene15(); }
+                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); clearScene6(); clearScene12(); clearScene14(); clearScene15(); }
                 else firstPerson = !firstPerson;
             } else if (e.code === "KeyX") {
                 cctvIndex = -1;
@@ -244,6 +248,7 @@ const camContainer = document.getElementById("camButtons");
                 setUIVisibility(true);
                 clearScene2(); // Memastikan Scene 2 dibersihkan
                 clearScene6();
+                clearScene12();
                 clearScene14();
                 clearScene15();
             } else {

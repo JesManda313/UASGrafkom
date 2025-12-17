@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 const ROTATION_SPEED = 2.5;
-const lightGreen = "#4CB864";
+const lightGreen = "#00ff3c";
 
 let singleCharacter = null;
 let sceneRef = null;
