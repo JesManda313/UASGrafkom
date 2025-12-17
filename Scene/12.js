@@ -8,6 +8,7 @@ let sceneRef = null;
 
 // target kemiringan (derajat)
 const TARGET_TILT_Z = THREE.MathUtils.degToRad(-25);
+let isActive = false;
 
 export async function initializeScene12(scene, createPlayerFunc) {
     if (singleCharacter) return;
@@ -27,10 +28,12 @@ export async function initializeScene12(scene, createPlayerFunc) {
     player.targetTiltZ = TARGET_TILT_Z;
 
     singleCharacter = player;
+    isActive = true;
 }
 
 export function updateScene12(delta) {
-    if (!singleCharacter) return false;
+    if (!singleCharacter) return;
+    if(!isActive) return;
 
     // Lerp miring bertahap
     const currentZ = singleCharacter.mesh.rotation.z;
@@ -50,8 +53,6 @@ export function updateScene12(delta) {
         oldPosition: oldPos,
         isMoving: false
     });
-
-    return true;
 }
 
 export function clearScene12() {
@@ -66,4 +67,9 @@ export function clearScene12() {
     }
 
     singleCharacter = null;
+    isActive = false;
+}
+
+export function isScene12Active(){
+    return isActive;
 }

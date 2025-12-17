@@ -360,12 +360,17 @@ function animate(){
     }
 
     // Scene controller
-        const isScene2Running = updateScene2(delta);
-        const isScene6Running = updateScene6(delta);
-        const isScene12Running = updateScene12(delta);
+        updateScene2(delta);
+        updateScene6(delta);
+        updateScene12(delta);
 
         // Player hanya bergerak kalau scene custom tidak aktif
-        if(!isScene2Running && !isScene6Running && !isScene12Running && cctvIndex === -1) {
+        if(
+            !isScene2Active() &&
+            !isScene6Active() &&
+            !isScene12Active() &&
+            cctvIndex === -1
+        ) {
 
         const oldPos = playerObj.mesh.position.clone();
         const newPos = oldPos.clone();

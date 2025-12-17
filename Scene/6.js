@@ -51,6 +51,7 @@ let overlayTimer = 0;
 let overlayActive = false;
 const OVERLAY_INTERVAL = 1.2;
 const OVERLAY_DURATION = 0.8;
+let isActive = false;
 
 
 export async function initializeScene6(scene, camera, createPlayerFunc) {
@@ -99,10 +100,12 @@ export async function initializeScene6(scene, camera, createPlayerFunc) {
     player.initialYaw = null;
 
     singleCharacter = player;
+    isActive = true;
 }
 
 export function updateScene6(delta) {
-    if (!singleCharacter) return false;
+    if (!singleCharacter) return;
+    if(!isActive) return;
 
     if (redOverlay) {
         overlayTimer += delta;
@@ -133,8 +136,6 @@ export function updateScene6(delta) {
             isMoving: singleCharacter.isMoving
         });
     }
-
-    return true;
 }
 
 export function clearScene6() {
@@ -159,6 +160,7 @@ export function clearScene6() {
     overlayActive = false;
 
     singleCharacter = null;
+    isActive = false;
 }
 
 
@@ -243,4 +245,8 @@ function updateCharacterMovement(player, delta) {
     player.mesh.rotation.y = targetYawMove;
 
     return true;
+}
+
+export function isScene6Active(){
+    return isActive;
 }
