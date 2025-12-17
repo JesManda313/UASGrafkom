@@ -49,8 +49,8 @@ let cameraRef = null;
 let redOverlay = null;
 let overlayTimer = 0;
 let overlayActive = false;
-const OVERLAY_INTERVAL = 1.2;
-const OVERLAY_DURATION = 0.8;
+const OVERLAY_INTERVAL = 1.5;
+const OVERLAY_DURATION = 0.5;
 let isActive = false;
 
 

@@ -121,6 +121,12 @@
             updateScene16,
             isScene16Active,
         } from "./Scene/16.js"; 
+        import { 
+            initializeScene5, 
+            clearScene5, 
+            updateScene5,
+            isScene5Active,
+        } from "./Scene/5.js"; 
 
         // SCENE
         const scene = new THREE.Scene();
@@ -204,7 +210,7 @@
             document.getElementById("camButtons").style.visibility = k;
         }
 
-const camContainer = document.getElementById("camButtons");
+        const camContainer = document.getElementById("camButtons");
         cctvCameras.forEach((cam, i) => {
             const b = document.createElement("button");
             b.innerText = (i + 1) + ". " + cam.name;
@@ -216,6 +222,7 @@ const camContainer = document.getElementById("camButtons");
                 // 💡 PANGGILAN FUNGSI SCENE 2 DARI KONTROLER
                 // SAFETY: Clear scenes first
                 clearScene2();
+                clearScene5();
                 clearScene6();
                 clearScene12();
                 clearScene14();
@@ -224,6 +231,9 @@ const camContainer = document.getElementById("camButtons");
 
                 if (i === 1) {
                     initializeScene2(scene, createPlayer, playerObj);
+                }
+                else if (i === 4){
+                    initializeScene5(scene, camera, createPlayer);
                 }
                 else if (i === 5) {
                     initializeScene6(scene, camera, createPlayer);
@@ -250,13 +260,14 @@ const camContainer = document.getElementById("camButtons");
 
         window.addEventListener("keydown", e => {
             if (e.code === "KeyP") {
-                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); clearScene6(); clearScene12(); clearScene14(); clearScene15(); clearScene16(); }
+                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); clearScene5(); clearScene6(); clearScene12(); clearScene14(); clearScene15(); clearScene16(); }
                 else firstPerson = !firstPerson;
             } else if (e.code === "KeyX") {
                 cctvIndex = -1;
                 firstPerson = false;
                 setUIVisibility(true);
                 clearScene2(); // Memastikan Scene 2 dibersihkan
+                clearScene5();
                 clearScene6();
                 clearScene12();
                 clearScene14();
@@ -442,6 +453,7 @@ const camContainer = document.getElementById("camButtons");
             updateScene6(delta);
             updateScene12(delta);
             updateScene16(delta);
+            updateScene5(delta);
             const isScene14Running = updateScene14(delta);
             const isScene15Running = updateScene15(delta);
 
@@ -451,8 +463,8 @@ const camContainer = document.getElementById("camButtons");
             !isScene6Active() &&
             !isScene12Active() &&
             !isScene16Active() &&
-            isScene14Running &&
-            isScene15Running &&
+            !isScene14Running &&
+            !isScene15Running &&
             cctvIndex === -1
         ) {
 
