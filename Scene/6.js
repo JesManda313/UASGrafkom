@@ -3,7 +3,7 @@ import * as THREE from "three";
 const CHARACTER_SPEED = 0.2;
 const ROTATION_SPEED = 2.5; 
 
-const lightGreen = "#4CB864"; // hijau muda
+const lightGreen = "#00ff3cff"; // hijau muda
 
 // Rotasi menghadap target X
 const yawToTarget = Math.atan2((1.00 - 1.74), ( -2.54 - -2.54 )); // arah ke X 1.00
