@@ -90,12 +90,14 @@
         import {
             initializeScene2,
             clearScene2,
-            updateScene2
+            updateScene2,
+    isScene2Active,
         } from "./Scene/2.js";
         import {
             initializeScene6,
             clearScene6,
-            updateScene6
+            updateScene6,
+    isScene6Active
         } from "./Scene/6.js";
         import {
             initializeScene14,
@@ -107,6 +109,12 @@
             clearScene15,
             updateScene15
         } from "./Scene/15.js";
+import { 
+    initializeScene12, 
+    clearScene12, 
+    updateScene12,
+    isScene12Active,
+} from "./Scene/12.js"; 
 
         // SCENE
         const scene = new THREE.Scene();
@@ -177,7 +185,7 @@
             { name: "Scene 13 Top", x: 0.73, z: -2.55, yaw: 90, pitch: -90, height: 0.4, id: 13 },
             { name: "Scene 14 ke vent", x: 0.96, z: -2.97, yaw: -5.5, pitch: 0, height: 0.1, id: 10 },
             { name: "Scene 15 Vent", x: 0.88, z: -2.13, yaw: 129.8, pitch: -21.2, height: -1, id: 15 },
-            { name: "Scene 16 Door", x: 1.20, z: -2.20, yaw: -92.5, pitch: 0, height: 0.1, id: 16 },
+            { name: "Scene 16 Door", x: 1.20, z: -2.23, yaw: -92.5, pitch: 0, height: 0.07, id: 16 },
         ];
 
         let cctvIndex = -1;
@@ -190,7 +198,7 @@
             document.getElementById("camButtons").style.visibility = k;
         }
 
-        const camContainer = document.getElementById("camButtons");
+const camContainer = document.getElementById("camButtons");
         cctvCameras.forEach((cam, i) => {
             const b = document.createElement("button");
             b.innerText = (i + 1) + ". " + cam.name;
@@ -414,13 +422,19 @@
             }
 
             // Scene controller
-            const isScene2Running = updateScene2(delta);
-            const isScene6Running = updateScene6(delta);
+            updateScene2(delta);
+            updateScene6(delta);
+        updateScene12(delta);
             const isScene14Running = updateScene14(delta);
             const isScene15Running = updateScene15(delta);
 
-            // Player hanya bergerak kalau scene custom tidak aktif
-            if (!isScene2Running && !isScene6Running && !isScene14Running && !isScene15Running && cctvIndex === -1) {
+        // Player hanya bergerak kalau scene custom tidak aktif
+        if(
+            !isScene2Active() &&
+            !isScene6Active() &&
+            !isScene12Active() &&
+            cctvIndex === -1
+        ) {
 
                 const oldPos = playerObj.mesh.position.clone();
                 const newPos = oldPos.clone();

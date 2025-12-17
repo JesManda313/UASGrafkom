@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+let isActive = false;
 const TARGET_YAW = 150.7 * Math.PI / 180;
 const YAWEND = 135.7 * Math.PI / 180;
 const CHARACTER_SPEED = 0.1; 
@@ -62,7 +63,6 @@ const scene2MovementData = [
     }
 ];
 
-let scene2Active = false;
 let scene2PlayerObjects = [];
 let sceneReference = null; 
 let userPlayerReference = null; 
@@ -163,8 +163,8 @@ function updateCharacterMovement(player, delta){
 // --- FUNGSI YANG DIEKSPOR (Dipanggil di main.html) ---
 
 export async function initializeScene2(scene, createPlayerFunc, playerObj){
-    if(scene2Active) return;
     if(!playerObj) return;
+    isActive = true;
 
     sceneReference = scene;
     userPlayerReference = playerObj;
@@ -193,11 +193,10 @@ export async function initializeScene2(scene, createPlayerFunc, playerObj){
         player.mesh.visible = true;
         scene2PlayerObjects.push(player);
     }
-    scene2Active = true;
 }
 
 export function updateScene2(delta){
-    if(!scene2Active) return false;
+    if(!isActive) return;
 
     scene2PlayerObjects.forEach(player => {
         const oldPos = player.mesh.position.clone();
@@ -215,12 +214,10 @@ export function updateScene2(delta){
     
     if(document.getElementById("pos")) document.getElementById("pos").innerText = "Scene 2 Aktif (AI)";
     if(document.getElementById("dir")) document.getElementById("dir").innerText = "4 Karakter Bergerak";
-
-    return true;
 }
 
 export function clearScene2(){
-    if(!scene2Active) return;
+    if(!isActive) return;
 
     scene2PlayerObjects.forEach(player => {
         if(player.mixer) player.mixer.stopAllAction();
@@ -228,6 +225,10 @@ export function clearScene2(){
     });
 
     scene2PlayerObjects = [];
-    scene2Active = false;
+    isActive = false;
     if(userPlayerReference) userPlayerReference.mesh.visible = true;
+}
+
+export function isScene2Active(){
+    return isActive;
 }
