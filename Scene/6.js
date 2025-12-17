@@ -44,8 +44,14 @@ const movementData = {
 
 let singleCharacter = null;
 let sceneRef = null;
+let redOverlay = null;
+let overlayTimer = 0;
+let overlayActive = false;
+const OVERLAY_INTERVAL = 1.2;
+const OVERLAY_DURATION = 0.8;
 
-export async function initializeScene6(scene, createPlayerFunc) {
+
+export async function initializeScene6(scene, camera, createPlayerFunc) {
     if (singleCharacter) return;
 
     sceneRef = scene;
@@ -53,6 +59,25 @@ export async function initializeScene6(scene, createPlayerFunc) {
     const data = movementData;
 
     const player = await createPlayerFunc(scene, data.start, data.color);
+
+    // Buat overlay merah transparan
+    const overlayGeometry = new THREE.PlaneGeometry(2, 2);
+    const overlayMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        transparent: true,
+        opacity: 0.25,
+        depthTest: false
+    });
+
+    redOverlay = new THREE.Mesh(overlayGeometry, overlayMaterial);
+
+    // Supaya selalu di depan kamera
+    redOverlay.position.z = -0.5;
+    camera.add(redOverlay);
+    scene.add(camera);
+
+    redOverlay.visible = false;
+
 
     player.targetPath = data.path.map(it => {
         if (it.pos) return { pos: it.pos.clone(), wait: it.wait, yaw: it.yaw };
@@ -75,6 +100,25 @@ export async function initializeScene6(scene, createPlayerFunc) {
 export function updateScene6(delta) {
     if (!singleCharacter) return;
 
+    if (redOverlay) {
+        overlayTimer += delta;
+
+        // Nyalain overlay
+        if (!overlayActive && overlayTimer >= OVERLAY_INTERVAL) {
+            overlayActive = true;
+            overlayTimer = 0;
+            redOverlay.visible = true;
+        }
+
+        // Matikan overlay setelah durasi habis
+        if (overlayActive && overlayTimer >= OVERLAY_DURATION) {
+            overlayActive = false;
+            overlayTimer = 0;
+            redOverlay.visible = false;
+        }
+    }
+
+
     const oldPos = singleCharacter.mesh.position.clone();
     const moved = updateCharacterMovement(singleCharacter, delta);
 
@@ -92,6 +136,17 @@ export function clearScene6() {
 
     if (singleCharacter.mixer) singleCharacter.mixer.stopAllAction();
     if (sceneRef) sceneRef.remove(singleCharacter.mesh);
+
+    if (redOverlay && sceneRef && sceneRef.camera) {
+        sceneRef.camera.remove(redOverlay);
+        redOverlay.geometry.dispose();
+        redOverlay.material.dispose();
+    }
+
+    redOverlay = null;
+    overlayTimer = 0;
+    overlayVisible = false;
+
 
     singleCharacter = null;
 }
