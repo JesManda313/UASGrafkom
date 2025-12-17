@@ -54,6 +54,11 @@ import {
     clearScene6, 
     updateScene6
 } from "./Scene/6.js"; 
+import { 
+    initializeScene12, 
+    clearScene12, 
+    updateScene12
+} from "./Scene/12.js"; 
 
 // SCENE
 const scene = new THREE.Scene();
@@ -145,6 +150,11 @@ cctvCameras.forEach((cam,i)=>{
         cctvIndex = i; 
         firstPerson = false; 
         setUIVisibility(false);
+
+        // SELALU clear semua scene dulu
+        clearScene2();
+        clearScene6();
+        clearScene12();
         
         // 💡 PANGGILAN FUNGSI SCENE 2 DARI KONTROLER
         if(i === 1){
@@ -153,9 +163,8 @@ cctvCameras.forEach((cam,i)=>{
         else if(i === 5){
             initializeScene6(scene, camera, createPlayer);
         }
-        else {
-            clearScene2();
-            clearScene6();
+        else if(i === 11){
+            initializeScene12(scene, createPlayer);
         }
     };
     camContainer.appendChild(b);
@@ -353,9 +362,10 @@ function animate(){
     // Scene controller
         const isScene2Running = updateScene2(delta);
         const isScene6Running = updateScene6(delta);
+        const isScene12Running = updateScene12(delta);
 
         // Player hanya bergerak kalau scene custom tidak aktif
-        if(!isScene2Running && !isScene6Running && cctvIndex === -1) {
+        if(!isScene2Running && !isScene6Running && !isScene12Running && cctvIndex === -1) {
 
         const oldPos = playerObj.mesh.position.clone();
         const newPos = oldPos.clone();

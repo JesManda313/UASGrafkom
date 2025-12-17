@@ -12,6 +12,7 @@ const yawToTarget = Math.atan2((1.00 - 1.74), ( -2.54 - -2.54 )); // arah ke X 1
 const lookLeft = yawToTarget + Math.PI / 2;   // +90
 const lookRight = yawToTarget - Math.PI / 2;  // -90
 
+
 const movementData = {
     color: lightGreen,
     start: new THREE.Vector3(1.74, 0.005, -2.54),
@@ -44,6 +45,7 @@ const movementData = {
 
 let singleCharacter = null;
 let sceneRef = null;
+let cameraRef = null;
 let redOverlay = null;
 let overlayTimer = 0;
 let overlayActive = false;
@@ -55,6 +57,8 @@ export async function initializeScene6(scene, camera, createPlayerFunc) {
     if (singleCharacter) return;
 
     sceneRef = scene;
+    cameraRef = camera;
+
 
     const data = movementData;
 
@@ -98,7 +102,7 @@ export async function initializeScene6(scene, camera, createPlayerFunc) {
 }
 
 export function updateScene6(delta) {
-    if (!singleCharacter) return;
+    if (!singleCharacter) return false;
 
     if (redOverlay) {
         overlayTimer += delta;
@@ -129,27 +133,34 @@ export function updateScene6(delta) {
             isMoving: singleCharacter.isMoving
         });
     }
+
+    return true;
 }
 
 export function clearScene6() {
     if (!singleCharacter) return;
 
-    if (singleCharacter.mixer) singleCharacter.mixer.stopAllAction();
-    if (sceneRef) sceneRef.remove(singleCharacter.mesh);
+    if (singleCharacter.mixer) {
+        singleCharacter.mixer.stopAllAction();
+    }
 
-    if (redOverlay && sceneRef && sceneRef.camera) {
-        sceneRef.camera.remove(redOverlay);
+    if (sceneRef) {
+        sceneRef.remove(singleCharacter.mesh);
+    }
+
+    if (redOverlay && cameraRef) {
+        cameraRef.remove(redOverlay);
         redOverlay.geometry.dispose();
         redOverlay.material.dispose();
     }
 
     redOverlay = null;
     overlayTimer = 0;
-    overlayVisible = false;
-
+    overlayActive = false;
 
     singleCharacter = null;
 }
+
 
 function updateCharacterMovement(player, delta) {
     if ((!player.targetPath || player.targetPath.length === 0) && !player.currentGoal) {
