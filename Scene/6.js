@@ -79,7 +79,6 @@ export async function initializeScene6(scene, camera, createPlayerFunc) {
     // Supaya selalu di depan kamera
     redOverlay.position.z = -0.5;
     camera.add(redOverlay);
-    scene.add(camera);
 
     redOverlay.visible = false;
 
