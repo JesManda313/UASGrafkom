@@ -217,7 +217,7 @@ export function updateScene2(delta){
 }
 
 export function clearScene2(){
-    if(!scene2Active) return;
+    if(!isActive) return;
 
     scene2PlayerObjects.forEach(player => {
         if(player.mixer) player.mixer.stopAllAction();
