@@ -109,24 +109,30 @@
             clearScene15,
             updateScene15
         } from "./Scene/15.js";
-        import { 
-            initializeScene12, 
-            clearScene12, 
+        import {
+            initializeScene12,
+            clearScene12,
             updateScene12,
             isScene12Active,
-        } from "./Scene/12.js"; 
-        import { 
-            initializeScene16, 
-            clearScene16, 
+        } from "./Scene/12.js";
+        import {
+            initializeScene16,
+            clearScene16,
             updateScene16,
             isScene16Active,
-        } from "./Scene/16.js"; 
-        import { 
-            initializeScene5, 
-            clearScene5, 
+        } from "./Scene/16.js";
+        import {
+            initializeScene5,
+            clearScene5,
             updateScene5,
             isScene5Active,
-        } from "./Scene/5.js"; 
+        } from "./Scene/5.js";
+        import {
+            initializeScene1,
+            clearScene1,
+            updateScene1,
+            isScene1Active,
+        } from "./Scene/1.js";
 
         // SCENE
         const scene = new THREE.Scene();
@@ -182,7 +188,7 @@
 
         // CAMERA CONTROLS
         const cctvCameras = [
-            { name: "Scene 1 Emergency", x: 4.69, z: -3.20, yaw: 180, pitch: -5, height: 0.1, id: 1 },
+            { name: "Scene 1 Emergency", x: 4.7, z: -3.35, yaw: -179.7, pitch: -21.9, height: 0.15, id: 1 },
             { name: "Scene 2 Chair", x: 6.31, z: -3.40, yaw: 150, pitch: 0, height: 0.1, id: 2 }, // Index 1
             { name: "Scene 3 Electric", x: 3.49, z: -1.67, yaw: -160, pitch: 0, height: 0.1, id: 3 },
             { name: "Scene 4 Scan", x: 5.82, z: -1.81, yaw: -141, pitch: 0, height: 0.1, id: 4 },
@@ -221,6 +227,7 @@
 
                 // 💡 PANGGILAN FUNGSI SCENE 2 DARI KONTROLER
                 // SAFETY: Clear scenes first
+                clearScene1();
                 clearScene2();
                 clearScene5();
                 clearScene6();
@@ -232,13 +239,16 @@
                 if (i === 1) {
                     initializeScene2(scene, createPlayer, playerObj);
                 }
-                else if (i === 4){
+                else if (i === 0) {
+                    initializeScene1(scene, createPlayer, playerObj, camera, smoothCollisionResponse);
+                }
+                else if (i === 4) {
                     initializeScene5(scene, camera, createPlayer);
                 }
                 else if (i === 5) {
                     initializeScene6(scene, camera, createPlayer);
                 }
-                else if (i === 11){
+                else if (i === 11) {
                     initializeScene12(scene, createPlayer);
                 }
                 else if (i === 13) {
@@ -247,7 +257,7 @@
                 else if (i === 14) {
                     initializeScene15(scene, createPlayer, playerObj);
                 }
-                else if (i === 15){
+                else if (i === 15) {
                     initializeScene16(scene, createPlayer);
                 }
             };
@@ -266,6 +276,7 @@
                 cctvIndex = -1;
                 firstPerson = false;
                 setUIVisibility(true);
+                clearScene1();
                 clearScene2(); // Memastikan Scene 2 dibersihkan
                 clearScene5();
                 clearScene6();
@@ -378,6 +389,9 @@
 
         // CAMERA UPDATE
         function updateCamera() {
+            // Priority: Scene 1 runs its own camera animation
+            if (isScene1Active()) return;
+
             if (cctvIndex !== -1) {
                 const cam = cctvCameras[cctvIndex];
 
@@ -449,6 +463,7 @@
             }
 
             // Scene controller
+            updateScene1(delta);
             updateScene2(delta);
             updateScene6(delta);
             updateScene12(delta);
@@ -457,16 +472,17 @@
             const isScene14Running = updateScene14(delta);
             const isScene15Running = updateScene15(delta);
 
-        // Player hanya bergerak kalau scene custom tidak aktif
-        if(
-            !isScene2Active() &&
-            !isScene6Active() &&
-            !isScene12Active() &&
-            !isScene16Active() &&
-            !isScene14Running &&
-            !isScene15Running &&
-            cctvIndex === -1
-        ) {
+            // Player hanya bergerak kalau scene custom tidak aktif
+            if (
+                !isScene1Active() &&
+                !isScene2Active() &&
+                !isScene6Active() &&
+                !isScene12Active() &&
+                !isScene16Active() &&
+                !isScene14Running &&
+                !isScene15Running &&
+                cctvIndex === -1
+            ) {
 
                 const oldPos = playerObj.mesh.position.clone();
                 const newPos = oldPos.clone();

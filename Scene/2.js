@@ -29,7 +29,7 @@ const scene2MovementData = [
         yawEnd: 155.4 * Math.PI / 180
     },
     { 
-        color: "#ea00ff", 
+        color: "#ed54ba", 
         start: new THREE.Vector3(6.14, 0.005, -3.77), 
         path: [ 
             { pos: new THREE.Vector3(6.14, 0.005, -3.77), wait: 5.0 },
