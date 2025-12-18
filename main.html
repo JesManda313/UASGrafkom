@@ -100,6 +100,12 @@
             isScene6Active
         } from "./Scene/6.js";
         import {
+            initializeScene11,
+            clearScene11,
+            updateScene11,
+            isScene11Active,
+        } from "./Scene/11.js";
+        import {
             initializeScene14,
             clearScene14,
             updateScene14
@@ -198,7 +204,7 @@
             { name: "Scene 8 Hallway", x: 1.78, z: -2.54, yaw: -90, pitch: 0, height: 0.1, id: 8 },
             { name: "Scene 9 Hands", x: 0.96, z: -2.97, yaw: -168, pitch: 0, height: 0.1, id: 9 },
             { name: "Scene 10 Empty", x: 0.96, z: -2.97, yaw: -5.5, pitch: 0, height: 0.1, id: 10 },
-            { name: "Scene 11 Hands", x: 0.96, z: -2.97, yaw: -168, pitch: 0, height: 0.1, id: 11 },
+            { name: "Scene 11 Hands", x: 0.8, z: -3.00, yaw: 179.9, pitch: -12, height: 0.1, id: 11 },
             { name: "Scene 12 Peek", x: 0.73, z: -2.31, yaw: 180, pitch: 0, height: 0.1, id: 12 },
             { name: "Scene 13 Top", x: 0.73, z: -2.55, yaw: 90, pitch: -90, height: 0.4, id: 13 },
             { name: "Scene 14 ke vent", x: 0.96, z: -2.97, yaw: -5.5, pitch: 0, height: 0.1, id: 10 },
@@ -231,6 +237,7 @@
                 clearScene2();
                 clearScene5();
                 clearScene6();
+                clearScene11();
                 clearScene12();
                 clearScene14();
                 clearScene15();
@@ -247,6 +254,9 @@
                 }
                 else if (i === 5) {
                     initializeScene6(scene, camera, createPlayer);
+                }
+                else if (i === 10) { // Scene 11 (IDs are 1-based, index is 10)
+                    initializeScene11(scene, createPlayer, playerObj, camera);
                 }
                 else if (i === 11) {
                     initializeScene12(scene, createPlayer);
@@ -270,7 +280,7 @@
 
         window.addEventListener("keydown", e => {
             if (e.code === "KeyP") {
-                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); clearScene5(); clearScene6(); clearScene12(); clearScene14(); clearScene15(); clearScene16(); }
+                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); clearScene5(); clearScene6(); clearScene11(); clearScene12(); clearScene14(); clearScene15(); clearScene16(); }
                 else firstPerson = !firstPerson;
             } else if (e.code === "KeyX") {
                 cctvIndex = -1;
@@ -280,6 +290,7 @@
                 clearScene2(); // Memastikan Scene 2 dibersihkan
                 clearScene5();
                 clearScene6();
+                clearScene11();
                 clearScene12();
                 clearScene14();
                 clearScene15();
@@ -391,6 +402,7 @@
         function updateCamera() {
             // Priority: Scene 1 runs its own camera animation
             if (isScene1Active()) return;
+            if (isScene11Active()) return; // Scene 11 handles own camera
 
             if (cctvIndex !== -1) {
                 const cam = cctvCameras[cctvIndex];
@@ -466,6 +478,7 @@
             updateScene1(delta);
             updateScene2(delta);
             updateScene6(delta);
+            updateScene11(delta);
             updateScene12(delta);
             updateScene16(delta);
             updateScene5(delta);
