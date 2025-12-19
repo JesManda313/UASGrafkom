@@ -3,135 +3,136 @@ import * as THREE from "three";
 let isActive = false;
 const TARGET_YAW = 150.7 * Math.PI / 180;
 const YAWEND = 135.7 * Math.PI / 180;
-const CHARACTER_SPEED = 0.1; 
-const SMOOTH_FACTOR = 0.05; 
+const CHARACTER_SPEED = 0.1;
+const SMOOTH_FACTOR = 0.05;
 
 const scene2MovementData = [
-    { 
-        color: "#ff0000", 
-        start: new THREE.Vector3(6.14, 0.005, -3.77), 
-        path: [ 
+    {
+        color: "#ff0000",
+        start: new THREE.Vector3(6.14, 0.005, -3.77),
+        path: [
             new THREE.Vector3(6.33, 0.005, -3.83),
-            new THREE.Vector3(6.45, 0.005, -4.28), 
+            new THREE.Vector3(6.45, 0.005, -4.28),
         ],
-        yawEnd: 154.6 * Math.PI / 180 
+        yawEnd: 154.6 * Math.PI / 180
     },
-    { 
-        color: "#0000ff", 
-        start: new THREE.Vector3(6.22, 0.005, -3.66), 
-        path: [ 
+    {
+        color: "#0000ff",
+        start: new THREE.Vector3(6.22, 0.005, -3.66),
+        path: [
             new THREE.Vector3(6.22, 0.005, -3.66),
             new THREE.Vector3(6.40, 0.005, -3.58),
             new THREE.Vector3(6.70, 0.005, -3.61),
             new THREE.Vector3(6.72, 0.005, -3.92),
-            new THREE.Vector3(6.95, 0.005, -3.92) 
+            new THREE.Vector3(6.95, 0.005, -3.92)
         ],
         yawEnd: 155.4 * Math.PI / 180
     },
-    { 
-        color: "#ed54ba", 
-        start: new THREE.Vector3(6.14, 0.005, -3.77), 
-        path: [ 
+    {
+        color: "#ed54ba",
+        start: new THREE.Vector3(6.14, 0.005, -3.77),
+        path: [
             { pos: new THREE.Vector3(6.14, 0.005, -3.77), wait: 5.0 },
-            new THREE.Vector3(6.44, 0.005, -3.57), 
-            new THREE.Vector3(6.64, 0.005, -3.18) 
+            new THREE.Vector3(6.44, 0.005, -3.57),
+            new THREE.Vector3(6.64, 0.005, -3.18)
         ],
         yawEnd: 33.8 * Math.PI / 180
     },
-    { 
-        color: "#00fbff", 
-        start: new THREE.Vector3(6.05, 0.005, -3.77), 
-        path: [ 
-            { 
-                pos: new THREE.Vector3(6.14, 0.005, -3.77), 
+    {
+        color: "#00fbff",
+        start: new THREE.Vector3(6.05, 0.005, -3.77),
+        path: [
+            {
+                pos: new THREE.Vector3(6.14, 0.005, -3.77),
                 wait: 8.0,
-                yaw: 0 * Math.PI / 180 
-            }, 
-            
-            new THREE.Vector3(6.33, 0.005, -3.83), 
-            
-            { 
-                pos: new THREE.Vector3(6.36, 0.005, -3.87), 
-                wait: 4.0, 
-                yaw: TARGET_YAW 
+                yaw: 0 * Math.PI / 180
             },
-            
-            new THREE.Vector3(6.38, 0.005, -3.65), 
-            new THREE.Vector3(6.50, 0.005, -3.59) 
+
+            new THREE.Vector3(6.33, 0.005, -3.83),
+
+            {
+                pos: new THREE.Vector3(6.36, 0.005, -3.87),
+                wait: 4.0,
+                yaw: TARGET_YAW
+            },
+
+            new THREE.Vector3(6.38, 0.005, -3.65),
+            new THREE.Vector3(6.50, 0.005, -3.59)
         ],
-        yawEnd: YAWEND 
+        yawEnd: YAWEND
     }
 ];
 
 let scene2PlayerObjects = [];
-let sceneReference = null; 
-let userPlayerReference = null; 
+let sceneReference = null;
+let userPlayerReference = null;
+let sound = null; // Variable untuk menyimpan objek suara 
 
 // --- FUNGSI UTAMA PERGERAKAN  ---
 
-function updateCharacterMovement(player, delta){
-    
-    if(player.isWaiting){
-        
+function updateCharacterMovement(player, delta) {
+
+    if (player.isWaiting) {
+
         //Set isMoving = false (untuk animasi Idle/Diam)
-        player.isMoving = false; 
-        
+        player.isMoving = false;
+
         //Implementasi Yaw Smoothing (Lerp)
         if (player.targetYaw !== null) {
             let currentYaw = player.mesh.rotation.y;
             let targetYaw = player.targetYaw;
-            
+
             let deltaYaw = targetYaw - currentYaw;
-            
+
             if (deltaYaw > Math.PI) deltaYaw -= 2 * Math.PI;
             if (deltaYaw < -Math.PI) deltaYaw += 2 * Math.PI;
 
-            currentYaw += deltaYaw * SMOOTH_FACTOR * 10; 
-            
+            currentYaw += deltaYaw * SMOOTH_FACTOR * 10;
+
             player.mesh.rotation.y = currentYaw;
         }
 
         player.waitTimer += delta;
-        if(player.waitTimer >= player.waitDuration){
+        if (player.waitTimer >= player.waitDuration) {
             player.isWaiting = false;
             player.waitTimer = 0;
-            player.currentGoal = null; 
-            player.targetYaw = null; 
+            player.currentGoal = null;
+            player.targetYaw = null;
             player.initialYaw = null; // Reset
         }
         return false;
     }
 
-    if(!player.currentGoal && player.targetPath.length > 0){
+    if (!player.currentGoal && player.targetPath.length > 0) {
         let nextGoal = player.targetPath.shift();
 
-        if(nextGoal.pos && nextGoal.wait !== undefined){
+        if (nextGoal.pos && nextGoal.wait !== undefined) {
             player.currentGoal = nextGoal.pos;
             player.waitDuration = nextGoal.wait;
             player.isWaiting = true;
-            player.targetYaw = nextGoal.yaw !== undefined ? nextGoal.yaw : null; 
-            
+            player.targetYaw = nextGoal.yaw !== undefined ? nextGoal.yaw : null;
+
             // TAMBAHAN: Simpan rotasi saat ini sebelum berputar
             if (player.targetYaw !== null) {
                 player.initialYaw = player.mesh.rotation.y;
             } else {
                 player.initialYaw = null;
             }
-        } else if(nextGoal instanceof THREE.Vector3){
+        } else if (nextGoal instanceof THREE.Vector3) {
             player.currentGoal = nextGoal;
         } else {
-             player.currentGoal = new THREE.Vector3(nextGoal.x, nextGoal.y, nextGoal.z);
+            player.currentGoal = new THREE.Vector3(nextGoal.x, nextGoal.y, nextGoal.z);
         }
     }
 
-    if(player.currentGoal){
+    if (player.currentGoal) {
         const oldPos = player.mesh.position.clone();
         const dir = player.currentGoal.clone().sub(oldPos);
-        dir.y = 0; 
-        
+        dir.y = 0;
+
         const distance = dir.length();
 
-        if(distance > CHARACTER_SPEED * delta){
+        if (distance > CHARACTER_SPEED * delta) {
             dir.normalize();
             const newPos = oldPos.clone().addScaledVector(dir, CHARACTER_SPEED * delta);
 
@@ -145,25 +146,25 @@ function updateCharacterMovement(player, delta){
             player.mesh.position.copy(player.currentGoal);
             player.currentGoal = null;
             player.isMoving = false;
-            
-            if(player.isWaiting){
-                 return false;
-            } else if (player.targetPath.length === 0){
+
+            if (player.isWaiting) {
+                return false;
+            } else if (player.targetPath.length === 0) {
                 player.mesh.rotation.y = player.yawEnd; // Hadapkan ke arah akhir
                 return false;
             }
             return true;
         }
     }
-    
+
     player.isMoving = false;
     return false;
 }
 
 // --- FUNGSI YANG DIEKSPOR (Dipanggil di main.html) ---
 
-export async function initializeScene2(scene, createPlayerFunc, playerObj){
-    if(!playerObj) return;
+export async function initializeScene2(scene, createPlayerFunc, playerObj, camera) {
+    if (!playerObj) return;
     isActive = true;
 
     sceneReference = scene;
@@ -171,11 +172,11 @@ export async function initializeScene2(scene, createPlayerFunc, playerObj){
 
     userPlayerReference.mesh.visible = false;
 
-    for(let i = 0; i < scene2MovementData.length; i++){
+    for (let i = 0; i < scene2MovementData.length; i++) {
         const data = scene2MovementData[i];
-        
-        const player = await createPlayerFunc(scene, data.start, data.color);
-        
+
+        const player = await createPlayerFunc(scene, data.start, data.color, camera);
+
         player.targetPath = data.path.map(item => {
             if (item.pos) return { pos: item.pos.clone(), wait: item.wait, yaw: item.yaw };
             if (item instanceof THREE.Vector3) return item.clone();
@@ -187,48 +188,70 @@ export async function initializeScene2(scene, createPlayerFunc, playerObj){
         player.isWaiting = false;
         player.waitDuration = 0;
         player.waitTimer = 0;
-        player.targetYaw = null; 
+        player.targetYaw = null;
         player.initialYaw = null;
 
         player.mesh.visible = true;
         scene2PlayerObjects.push(player);
     }
+
+    // AUDIO LOGIC
+    if (camera) {
+        const listener = camera.children.find(c => c.type === 'AudioListener');
+        if (listener) {
+            sound = new THREE.Audio(listener);
+            const audioLoader = new THREE.AudioLoader();
+            // Load file: pastikan nama file sesuai (audio_scene2.mp3)
+            audioLoader.load('assets/audio_scene2.mp3', function (buffer) {
+                if (!isActive) return; // Cegah play jika scene sudah keburu ditutup
+                sound.setBuffer(buffer);
+                sound.setLoop(true);
+                sound.setVolume(0.5);
+                sound.play();
+            });
+        }
+    }
 }
 
-export function updateScene2(delta){
-    if(!isActive) return;
+export function updateScene2(delta) {
+    if (!isActive) return;
 
     scene2PlayerObjects.forEach(player => {
         const oldPos = player.mesh.position.clone();
         const moved = updateCharacterMovement(player, delta);
-        
-        // player.update dipanggil jika ada pergerakan posisi (moved=true) atau sedang menunggu (isWaiting=true)
-        if(moved || player.isWaiting){
-             player.update(delta, {
-                 position: player.mesh.position,
-                 oldPosition: oldPos,
-                 isMoving: player.isMoving // Kini bernilai FALSE saat menunggu, memicu Idle
-             });
-        }
+
+        // player.update dipanggil SETIAP frame agar animasi/suara bisa update (misal: stop jalan)
+        player.update(delta, {
+            position: player.mesh.position,
+            oldPosition: oldPos,
+            isMoving: player.isMoving && moved // Pastikan isMoving hanya true jika benar-benar pindah
+        });
     });
-    
-    if(document.getElementById("pos")) document.getElementById("pos").innerText = "Scene 2 Aktif (AI)";
-    if(document.getElementById("dir")) document.getElementById("dir").innerText = "4 Karakter Bergerak";
+
+    if (document.getElementById("pos")) document.getElementById("pos").innerText = "Scene 2 Aktif (AI)";
+    if (document.getElementById("dir")) document.getElementById("dir").innerText = "4 Karakter Bergerak";
 }
 
-export function clearScene2(){
-    if(!isActive) return;
+export function clearScene2() {
+    if (!isActive) return;
 
     scene2PlayerObjects.forEach(player => {
-        if(player.mixer) player.mixer.stopAllAction();
-        if(sceneReference) sceneReference.remove(player.mesh);
+        if (player.mixer) player.mixer.stopAllAction();
+        if (sceneReference) sceneReference.remove(player.mesh);
     });
 
     scene2PlayerObjects = [];
     isActive = false;
-    if(userPlayerReference) userPlayerReference.mesh.visible = true;
+
+    // Stop Audio
+    if (sound) {
+        if (sound.isPlaying) sound.stop();
+        sound = null;
+    }
+
+    if (userPlayerReference) userPlayerReference.mesh.visible = true;
 }
 
-export function isScene2Active(){
+export function isScene2Active() {
     return isActive;
 }

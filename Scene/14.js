@@ -5,7 +5,7 @@ const SMOOTH_FACTOR = 0.05;
 
 const scene14MovementData = [
     {
-        color: "#00ff3cff", // Default as requested or standard
+        color: "#00ff3c", // Default as requested or standard
         start: new THREE.Vector3(0.79, 0.005, -2.55),
         startYaw: -91.9 * Math.PI / 180,
         path: [
@@ -123,7 +123,7 @@ function updateCharacterMovement(player, delta) {
     return false;
 }
 
-export async function initializeScene14(scene, createPlayerFunc, playerObj) {
+export async function initializeScene14(scene, createPlayerFunc, playerObj, camera) {
     if (scene14Active) return;
 
     sceneReference = scene;
@@ -139,7 +139,7 @@ export async function initializeScene14(scene, createPlayerFunc, playerObj) {
 
         // Buat NPC
         // createPlayerFunc(scene, startPos, color)
-        const player = await createPlayerFunc(scene, data.start, data.color || "#ff0000");
+        const player = await createPlayerFunc(scene, data.start, data.color || "#ff0000", camera);
 
         // Set rotasi awal
         if (data.startYaw !== undefined) {

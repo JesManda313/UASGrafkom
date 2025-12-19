@@ -143,6 +143,9 @@
         // SCENE
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 2000);
+        const listener = new THREE.AudioListener();
+        camera.add(listener);
+
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(innerWidth, innerHeight);
         renderer.shadowMap.enabled = true;
@@ -244,7 +247,7 @@
                 clearScene16();
 
                 if (i === 1) {
-                    initializeScene2(scene, createPlayer, playerObj);
+                    initializeScene2(scene, createPlayer, playerObj, camera);
                 }
                 else if (i === 0) {
                     initializeScene1(scene, createPlayer, playerObj, camera, smoothCollisionResponse);
@@ -262,10 +265,10 @@
                     initializeScene12(scene, createPlayer);
                 }
                 else if (i === 13) {
-                    initializeScene14(scene, createPlayer, playerObj);
+                    initializeScene14(scene, createPlayer, playerObj, camera);
                 }
                 else if (i === 14) {
-                    initializeScene15(scene, createPlayer, playerObj);
+                    initializeScene15(scene, createPlayer, playerObj, camera);
                 }
                 else if (i === 15) {
                     initializeScene16(scene, createPlayer);
@@ -353,7 +356,7 @@
 
             scene.add(map);
 
-            playerObj = await createPlayer(scene, new THREE.Vector3(4.7, 0.005, -3.3));
+            playerObj = await createPlayer(scene, new THREE.Vector3(4.7, 0.005, -3.3), "#ff0000", camera);
             mixer = playerObj.mixer;
             playerObj.mesh.visible = true;
 

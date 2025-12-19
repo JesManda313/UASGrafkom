@@ -12,7 +12,7 @@ const POS_Y = 0.000001;
 const POS_Z = -2.28;
 const YAW_DEG = -50.6; // Match end of Scene 14
 
-export async function initializeScene15(scene, createPlayerFunc, playerObj) {
+export async function initializeScene15(scene, createPlayerFunc, playerObj, camera) {
     if (scene15Active) return;
 
     sceneReference = scene;
@@ -27,7 +27,7 @@ export async function initializeScene15(scene, createPlayerFunc, playerObj) {
     const startPos = new THREE.Vector3(POS_X, POS_Y, POS_Z);
     const color = "#00ff3c"; // Green as requested in 14.js
 
-    const player = await createPlayerFunc(scene, startPos, color);
+    const player = await createPlayerFunc(scene, startPos, color, camera);
 
     // Set Orientation
     // Set Rotation Order to ensure Yaw applies first, then Pitch
