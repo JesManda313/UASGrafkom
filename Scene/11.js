@@ -45,7 +45,7 @@ export async function initializeScene11(scene, createPlayerFunc, playerObj, came
     }
 
     try {
-        const player = await createPlayerFunc(scene, PLAYER_START_POS, GREEN_COLOR);
+        const player = await createPlayerFunc(scene, PLAYER_START_POS, GREEN_COLOR, camera);
         
         if (camera) {
             // Set Camera Initial Pose

@@ -203,7 +203,7 @@ export async function initializeScene1(scene, createPlayerFunc, playerObj, camer
     for(let i = 0; i < scene1Data.length; i++){
         const data = scene1Data[i];
         
-        const player = await createPlayerFunc(scene, data.startPos, data.color);
+        const player = await createPlayerFunc(scene, data.startPos, data.color, camera);
         
         player.mesh.rotation.y = data.rotationY;
         player.isMoving = false;

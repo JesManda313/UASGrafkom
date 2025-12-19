@@ -20,13 +20,13 @@ const ROTATE_DELAY = 0.6;
 let delayTimer = 0;
 let startRotate = false;
 
-export async function initializeScene16(scene, createPlayerFunc) {
+export async function initializeScene16(scene, createPlayerFunc, camera) {
     if (singleCharacter) return;
 
     sceneRef = scene;
 
     const startPosition = new THREE.Vector3(1.06, 0.005, -2.24);
-    const player = await createPlayerFunc(scene, startPosition, lightGreen);
+    const player = await createPlayerFunc(scene, startPosition, lightGreen, camera);
 
     // yaw awal
     player.mesh.rotation.y = START_YAW;

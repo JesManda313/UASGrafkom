@@ -10,13 +10,13 @@ let sceneRef = null;
 const TARGET_TILT_Z = THREE.MathUtils.degToRad(-25);
 let isActive = false;
 
-export async function initializeScene12(scene, createPlayerFunc) {
+export async function initializeScene12(scene, createPlayerFunc, camera) {
     if (singleCharacter) return;
 
     sceneRef = scene;
 
     const startPosition = new THREE.Vector3(0.66, 0.025, -2.65);
-    const player = await createPlayerFunc(scene, startPosition, lightGreen);
+    const player = await createPlayerFunc(scene, startPosition, lightGreen, camera);
 
     // Menghadap Z positif
     player.mesh.rotation.y = 0;

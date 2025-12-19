@@ -63,7 +63,7 @@ export async function initializeScene6(scene, camera, createPlayerFunc) {
 
     const data = movementData;
 
-    const player = await createPlayerFunc(scene, data.start, data.color);
+    const player = await createPlayerFunc(scene, data.start, data.color, camera);
 
     // Buat overlay merah transparan
     const overlayGeometry = new THREE.PlaneGeometry(2, 2);

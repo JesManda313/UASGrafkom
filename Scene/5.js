@@ -49,7 +49,7 @@ export async function initializeScene5(scene, camera, createPlayerFunc) {
     cameraRef = camera;
 
     const startPos = new THREE.Vector3(2.40, 0.005, -3.02);
-    const player = await createPlayerFunc(scene, startPos, lightGreen);
+    const player = await createPlayerFunc(scene, startPos, lightGreen, camera);
 
     // yaw awal
     player.mesh.rotation.y = THREE.MathUtils.degToRad(165);
