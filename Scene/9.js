@@ -33,7 +33,7 @@ const HAND_COLOR = "#00cc30";
 
 // hand Movement
 const hand_START_POS = new THREE.Vector3(0.83, 0.07, -3.27); // Starting near player
-const hand_TARGET_POS = new THREE.Vector3(0.866, 0.097, -3.28);
+const hand_TARGET_POS = new THREE.Vector3(0.87, 0.097, -3.28);
 const hand_MOVE_DURATION = 0.5;
 const hand_STAY_DURATION = 3.0;
 
@@ -97,7 +97,8 @@ export async function initializeScene9(
         model.position.copy(hand_START_POS);
 
         // Rotation Fix: Fingers UP (Z=PI), Palm AWAY (Y=PI/2)
-        model.rotation.set(0, Math.PI / 2, Math.PI);
+        // Rotation Fix: Flip Y to move thumb to other side
+        model.rotation.set(0, -Math.PI / 2, Math.PI);
 
         // Visibility Check
         model.visible = sceneTimer >= MOVE_DURATION;
@@ -213,7 +214,7 @@ export function updateScene9(delta) {
   // --- Lighting & Sound ---
   // Stop lighting when hand returns (End of Phase 3 = 6.8s)
   const END_PHASE_3_TIME =
-    MOVE_DURATION + hand_MOVE_DURATION + hand_STAY_DURATION + 0.3; // 6.8s
+    MOVE_DURATION + hand_MOVE_DURATION + hand_STAY_DURATION; // 6.8s
 
   if (sceneTimer < END_PHASE_3_TIME) {
     // Play Sound
@@ -398,7 +399,7 @@ export function updateScene9(delta) {
       );
 
       const tiltAngle = Math.sin(waveT * waveFreq) * 0.3;
-      handMesh.rotation.set(0, Math.PI / 2, Math.PI + tiltAngle);
+      handMesh.rotation.set(0, -Math.PI / 2, Math.PI + tiltAngle);
     } else if (sceneTimer >= WAVE_START_TIME + WAVE_DURATION && handMesh) {
       // Hide after wave
       handMesh.visible = false;
