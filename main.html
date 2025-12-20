@@ -100,6 +100,12 @@
             isScene6Active
         } from "./Scene/6.js";
         import {
+            initializeScene9,
+            clearScene9,
+            updateScene9,
+            isScene9Active
+        } from "./Scene/9.js";
+        import {
             initializeScene11,
             clearScene11,
             updateScene11,
@@ -240,6 +246,7 @@
                 clearScene2();
                 clearScene5();
                 clearScene6();
+                clearScene9();
                 clearScene11();
                 clearScene12();
                 clearScene14();
@@ -257,6 +264,9 @@
                 }
                 else if (i === 5) {
                     initializeScene6(scene, camera, createPlayer);
+                }
+                else if (i === 8) { // Scene 9
+                    initializeScene9(scene, createPlayer, playerObj, camera);
                 }
                 else if (i === 10) { // Scene 11 (IDs are 1-based, index is 10)
                     initializeScene11(scene, createPlayer, playerObj, camera);
@@ -283,7 +293,7 @@
 
         window.addEventListener("keydown", e => {
             if (e.code === "KeyP") {
-                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene2(); clearScene5(); clearScene6(); clearScene11(); clearScene12(); clearScene14(); clearScene15(); clearScene16(); }
+                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene1(); clearScene2(); clearScene5(); clearScene6(); clearScene9(); clearScene11(); clearScene12(); clearScene14(); clearScene15(); clearScene16(); }
                 else firstPerson = !firstPerson;
             } else if (e.code === "KeyX") {
                 cctvIndex = -1;
@@ -293,6 +303,7 @@
                 clearScene2(); // Memastikan Scene 2 dibersihkan
                 clearScene5();
                 clearScene6();
+                clearScene9();
                 clearScene11();
                 clearScene12();
                 clearScene14();
@@ -406,6 +417,7 @@
             // Priority: Scene 1 runs its own camera animation
             if (isScene1Active()) return;
             if (isScene11Active()) return; // Scene 11 handles own camera
+            if (isScene9Active()) return;
 
             if (cctvIndex !== -1) {
                 const cam = cctvCameras[cctvIndex];
@@ -481,6 +493,7 @@
             updateScene1(delta);
             updateScene2(delta);
             updateScene6(delta);
+            updateScene9(delta);
             updateScene11(delta);
             updateScene12(delta);
             updateScene16(delta);
@@ -493,6 +506,7 @@
                 !isScene1Active() &&
                 !isScene2Active() &&
                 !isScene6Active() &&
+                !isScene9Active() &&
                 !isScene12Active() &&
                 !isScene16Active() &&
                 !isScene14Running &&
