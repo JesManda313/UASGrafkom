@@ -145,6 +145,10 @@ export function clearScene6() {
         singleCharacter.mixer.stopAllAction();
     }
 
+    if (singleCharacter.stopAll) {
+        singleCharacter.stopAll();
+    }
+
     if (sceneRef) {
         sceneRef.remove(singleCharacter.mesh);
     }

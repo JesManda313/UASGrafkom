@@ -236,6 +236,13 @@ export function clearScene2() {
     if (!isActive) return;
 
     scene2PlayerObjects.forEach(player => {
+        if (player.update) {
+            player.update(0, {
+                position: player.mesh.position,
+                oldPosition: player.mesh.position,
+                isMoving: false,
+            });
+        }
         if (player.mixer) player.mixer.stopAllAction();
         if (sceneReference) sceneReference.remove(player.mesh);
     });
