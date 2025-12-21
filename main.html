@@ -143,6 +143,21 @@
         sun.target.position.set(4, 0, -3);
         scene.add(sun);
         scene.add(sun.target);
+        sun.castShadow = true;
+        sun.shadow.mapSize.width = 1024;
+        sun.shadow.mapSize.height = 1024;
+        sun.shadow.camera.near = 0.1;
+        sun.shadow.camera.far = 10;
+        sun.shadow.camera.left = -5;
+        sun.shadow.camera.right = 5;
+        sun.shadow.camera.top = 5;
+        sun.shadow.camera.bottom = -5;
+        sun.shadow.bias = 0;
+        sun.shadow.normalBias = 0.005;
+        const sunHelper = new THREE.DirectionalLightHelper(sun, 0.3, 0xffaa00);
+        scene.add(sunHelper);
+        const camHelper = new THREE.CameraHelper(sun.shadow.camera);
+        scene.add(camHelper);
 
         // --- BACKGROUND ---
         new RGBELoader().load(
