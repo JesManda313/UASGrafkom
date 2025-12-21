@@ -66,7 +66,7 @@
 </head>
 
 <body>
-    <div id="hint">Click P to switch Camera | X to force 3rd-person</div>
+    <div id="hint">Click P to switch Camera | X to force 3rd-person | Click anywhere to start Sound</div>
     <div id="pos">X: 0 | Z: 0</div>
     <div id="dir">Yaw: 0° | Pitch: 0°</div>
     <div id="camButtons"></div>
@@ -86,75 +86,25 @@
 
         import { createPlayer } from "./character.js";
         import { loadMap } from "./map.js";
-        // 💡 IMPOR FUNGSI KONTROLER SCENE 2
-        import {
-            initializeScene2,
-            clearScene2,
-            updateScene2,
-            isScene2Active,
-        } from "./Scene/2.js";
-        import {
-            initializeScene6,
-            clearScene6,
-            updateScene6,
-            isScene6Active
-        } from "./Scene/6.js";
-        import {
-            initializeScene9,
-            clearScene9,
-            updateScene9,
-            isScene9Active
-        } from "./Scene/9.js";
-        import {
-            initializeScene10,
-            clearScene10,
-            updateScene10,
-            isScene10Active
-        } from "./Scene/10.js";
-        import {
-            initializeScene11,
-            clearScene11,
-            updateScene11,
-            isScene11Active,
-        } from "./Scene/11.js";
-        import {
-            initializeScene14,
-            clearScene14,
-            updateScene14
-        } from "./Scene/14.js";
-        import {
-            initializeScene15,
-            clearScene15,
-            updateScene15
-        } from "./Scene/15.js";
-        import {
-            initializeScene12,
-            clearScene12,
-            updateScene12,
-            isScene12Active,
-        } from "./Scene/12.js";
-        import {
-            initializeScene16,
-            clearScene16,
-            updateScene16,
-            isScene16Active,
-        } from "./Scene/16.js";
-        import {
-            initializeScene5,
-            clearScene5,
-            updateScene5,
-            isScene5Active,
-        } from "./Scene/5.js";
-        import {
-            initializeScene1,
-            clearScene1,
-            updateScene1,
-            isScene1Active,
-        } from "./Scene/1.js";
+        
+        // Scene Imports
+        import { initializeScene2, clearScene2, updateScene2, isScene2Active } from "./Scene/2.js";
+        import { initializeScene6, clearScene6, updateScene6, isScene6Active } from "./Scene/6.js";
+        import { initializeScene9, clearScene9, updateScene9, isScene9Active } from "./Scene/9.js";
+        import { initializeScene10, clearScene10, updateScene10, isScene10Active } from "./Scene/10.js";
+        import { initializeScene11, clearScene11, updateScene11, isScene11Active } from "./Scene/11.js";
+        import { initializeScene14, clearScene14, updateScene14 } from "./Scene/14.js";
+        import { initializeScene15, clearScene15, updateScene15 } from "./Scene/15.js";
+        import { initializeScene12, clearScene12, updateScene12, isScene12Active } from "./Scene/12.js";
+        import { initializeScene16, clearScene16, updateScene16, isScene16Active } from "./Scene/16.js";
+        import { initializeScene5, clearScene5, updateScene5, isScene5Active } from "./Scene/5.js";
+        import { initializeScene1, clearScene1, updateScene1, isScene1Active } from "./Scene/1.js";
 
-        // SCENE
+        // --- CORE SETUP ---
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 2000);
+        
+        // Audio Listener attached to camera
         const listener = new THREE.AudioListener();
         camera.add(listener);
 
@@ -162,34 +112,39 @@
         renderer.setSize(innerWidth, innerHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
         document.body.appendChild(renderer.domElement);
+
+        // --- GLOBAL AMBIENT SOUND (SPACESHIP) ---
+        let globalAmbientSound = new THREE.Audio(listener);
+        const audioLoader = new THREE.AudioLoader();
+
+        audioLoader.load("backsound/spaceship-ambience-with-effects-21420.mp3", (buffer) => {
+            globalAmbientSound.setBuffer(buffer);
+            globalAmbientSound.setLoop(true);
+            globalAmbientSound.setVolume(0.35); // Suara latar pelan
+            
+            // Interaction trigger to start audio (Browser Requirement)
+            const startAudio = () => {
+                if (!globalAmbientSound.isPlaying) {
+                    globalAmbientSound.play();
+                }
+                // Remove listeners after first interaction
+                window.removeEventListener("mousedown", startAudio);
+                window.removeEventListener("keydown", startAudio);
+            };
+            window.addEventListener("mousedown", startAudio);
+            window.addEventListener("keydown", startAudio);
+        });
+
+        // --- LIGHTS ---
         scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-        // Sun Light global
         const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-        sun.position.set(4, 5, -3); // tinggi di atas map
+        sun.position.set(4, 5, -3);
         sun.target.position.set(4, 0, -3);
         scene.add(sun);
         scene.add(sun.target);
 
-        // Optional: shadow (aman untuk map kecilmu)
-        sun.castShadow = true;
-        sun.shadow.mapSize.width = 1024;
-        sun.shadow.mapSize.height = 1024;
-        sun.shadow.camera.near = 0.1;
-        sun.shadow.camera.far = 10;
-        sun.shadow.camera.left = -5;
-        sun.shadow.camera.right = 5;
-        sun.shadow.camera.top = 5;
-        sun.shadow.camera.bottom = -5;
-        sun.shadow.bias = 0;
-        sun.shadow.normalBias = 0.005;
-        const sunHelper = new THREE.DirectionalLightHelper(sun, 0.3, 0xffaa00);
-        scene.add(sunHelper);
-        const camHelper = new THREE.CameraHelper(sun.shadow.camera);
-        scene.add(camHelper);
-
-
+        // --- BACKGROUND ---
         new RGBELoader().load(
             "assets/space.hdr",
             tex => { tex.mapping = THREE.EquirectangularReflectionMapping; scene.background = tex },
@@ -197,20 +152,19 @@
             () => { scene.background = new THREE.Color(0x000010) }
         );
 
-        // VARIABLES
+        // --- VARIABLES ---
         const PLAYER_RADIUS = 0.05;
         let staticCollidableObjects = [];
         let playerObj = null;
         let mixer = null;
         let clock = new THREE.Clock();
         let cameraDistance = 2;
-
         const wallIDs = [137, 139, 141, 143, 64, 59, 128, 32, 80, 79, 18, 164, 188, 105, 58, 78, 44, 43, 25, 128, 23, 56, 66, 27, 64, 33, 87, 123, 60, 37, 115, 54, 118, 8, 93, 52, 95, 74, 72, 107, 176, 185, 169, 62, 168];
 
-        // CAMERA CONTROLS
+        // CCTV Config
         const cctvCameras = [
             { name: "Scene 1 Emergency", x: 4.7, z: -3.35, yaw: -179.7, pitch: -21.9, height: 0.15, id: 1 },
-            { name: "Scene 2 Chair", x: 6.31, z: -3.40, yaw: 150, pitch: 0, height: 0.1, id: 2 }, // Index 1
+            { name: "Scene 2 Chair", x: 6.31, z: -3.40, yaw: 150, pitch: 0, height: 0.1, id: 2 },
             { name: "Scene 3 Electric", x: 3.49, z: -1.67, yaw: -160, pitch: 0, height: 0.1, id: 3 },
             { name: "Scene 4 Scan", x: 5.82, z: -1.81, yaw: -141, pitch: 0, height: 0.1, id: 4 },
             { name: "Scene 5 Security", x: 2.38, z: -2.43, yaw: 175, pitch: 0, height: 0.1, id: 5 },
@@ -237,6 +191,12 @@
             document.getElementById("camButtons").style.visibility = k;
         }
 
+        function clearAllScenes() {
+            clearScene1(); clearScene2(); clearScene5(); clearScene6(); 
+            clearScene9(); clearScene10(); clearScene11(); clearScene12(); 
+            clearScene14(); clearScene15(); clearScene16();
+        }
+
         const camContainer = document.getElementById("camButtons");
         cctvCameras.forEach((cam, i) => {
             const b = document.createElement("button");
@@ -245,81 +205,33 @@
                 cctvIndex = i;
                 firstPerson = false;
                 setUIVisibility(false);
+                clearAllScenes();
 
-                // 💡 PANGGILAN FUNGSI SCENE 2 DARI KONTROLER
-                // SAFETY: Clear scenes first
-                clearScene1();
-                clearScene2();
-                clearScene5();
-                clearScene6();
-                clearScene9();
-                clearScene10();
-                clearScene11();
-                clearScene12();
-                clearScene14();
-                clearScene15();
-                clearScene16();
-
-                if (i === 1) {
-                    initializeScene2(scene, createPlayer, playerObj, camera);
-                }
-                else if (i === 0) {
-                    initializeScene1(scene, createPlayer, playerObj, camera, smoothCollisionResponse);
-                }
-                else if (i === 4) {
-                    initializeScene5(scene, camera, createPlayer);
-                }
-                else if (i === 5) {
-                    initializeScene6(scene, camera, createPlayer);
-                }
-                else if (i === 8) { // Scene 9
-                    initializeScene9(scene, createPlayer, playerObj, camera);
-                }
-                else if (i === 9) { // Scene 10
-                    initializeScene10(scene, createPlayer, playerObj, camera);
-                }
-                else if (i === 10) { // Scene 11 (IDs are 1-based, index is 10)
-                    initializeScene11(scene, createPlayer, playerObj, camera);
-                }
-                else if (i === 11) {
-                    initializeScene12(scene, createPlayer, camera);
-                }
-                else if (i === 13) {
-                    initializeScene14(scene, createPlayer, playerObj, camera);
-                }
-                else if (i === 14) {
-                    initializeScene15(scene, createPlayer, playerObj, camera);
-                }
-                else if (i === 15) {
-                    initializeScene16(scene, createPlayer, camera);
-                }
+                if (i === 0) initializeScene1(scene, createPlayer, playerObj, camera, smoothCollisionResponse);
+                else if (i === 1) initializeScene2(scene, createPlayer, playerObj, camera);
+                else if (i === 4) initializeScene5(scene, camera, createPlayer);
+                else if (i === 5) initializeScene6(scene, camera, createPlayer);
+                else if (i === 8) initializeScene9(scene, createPlayer, playerObj, camera);
+                else if (i === 9) initializeScene10(scene, createPlayer, playerObj, camera);
+                else if (i === 10) initializeScene11(scene, createPlayer, playerObj, camera);
+                else if (i === 11) initializeScene12(scene, createPlayer, camera);
+                else if (i === 13) initializeScene14(scene, createPlayer, playerObj, camera);
+                else if (i === 14) initializeScene15(scene, createPlayer, playerObj, camera);
+                else if (i === 15) initializeScene16(scene, createPlayer, camera);
             };
             camContainer.appendChild(b);
         });
 
-        // MOVEMENT
+        // --- MOVEMENT & INPUT ---
         const speed = 0.005;
         const keys = { w: false, a: false, s: false, d: false };
 
         window.addEventListener("keydown", e => {
             if (e.code === "KeyP") {
-                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearScene1(); clearScene2(); clearScene5(); clearScene6(); clearScene9(); clearScene10(); clearScene11(); clearScene12(); clearScene14(); clearScene15(); clearScene16(); }
+                if (cctvIndex !== -1) { cctvIndex = -1; firstPerson = true; setUIVisibility(true); clearAllScenes(); }
                 else firstPerson = !firstPerson;
             } else if (e.code === "KeyX") {
-                cctvIndex = -1;
-                firstPerson = false;
-                setUIVisibility(true);
-                clearScene1();
-                clearScene2(); // Memastikan Scene 2 dibersihkan
-                clearScene5();
-                clearScene6();
-                clearScene9();
-                clearScene10();
-                clearScene11();
-                clearScene12();
-                clearScene14();
-                clearScene15();
-                clearScene16();
+                cctvIndex = -1; firstPerson = false; setUIVisibility(true); clearAllScenes();
             } else {
                 const k = e.code.toLowerCase().replace("key", "");
                 if (keys.hasOwnProperty(k)) keys[k] = true;
@@ -336,28 +248,18 @@
         let yaw = 0, pitch = 0;
         const PITCH_LIMIT = Math.PI / 2 - 0.01;
 
-        window.addEventListener("mousedown", e => {
-            isMouseDown = true;
-            lastX = e.clientX;
-            lastY = e.clientY;
-        });
+        window.addEventListener("mousedown", e => { isMouseDown = true; lastX = e.clientX; lastY = e.clientY; });
         window.addEventListener("mouseup", () => isMouseDown = false);
-
         window.addEventListener("mousemove", e => {
             if (!isMouseDown) return;
-
             const dx = (e.clientX - lastX) * 0.002;
             const dy = (e.clientY - lastY) * 0.002;
-            lastX = e.clientX;
-            lastY = e.clientY;
-
+            lastX = e.clientX; lastY = e.clientY;
             if (firstPerson) {
-                yaw -= dx;
-                pitch -= dy;
+                yaw -= dx; pitch -= dy;
                 pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch));
             } else {
-                camRotationY -= dx;
-                camRotationX += dy;
+                camRotationY -= dx; camRotationX += dy;
                 camRotationX = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, camRotationX));
             }
         });
@@ -367,114 +269,76 @@
             cameraDistance = Math.min(Math.max(cameraDistance, 0.3), 4);
         });
 
-
         let firstPerson = false;
 
-        // LOAD MAP
+        // --- LOAD MAP & START ---
         (async () => {
             const result = await loadMap(wallIDs);
-            const map = result.map;
+            scene.add(result.map);
             staticCollidableObjects = result.staticCollidableObjects;
-
-            scene.add(map);
 
             playerObj = await createPlayer(scene, new THREE.Vector3(4.7, 0.005, -3.3), "#ff0000", camera);
             mixer = playerObj.mixer;
             playerObj.mesh.visible = true;
 
-            updateCamera();
             animate();
         })();
 
-
-        // COLLISION
+        // --- COLLISION LOGIC ---
         function sphereMeshCollision(pos) {
             if (!staticCollidableObjects.length) return false;
-
             for (const wall of staticCollidableObjects) {
                 wall.updateMatrixWorld(true);
-
                 const inverse = wall.matrixWorld.clone().invert();
                 const colliderOffset = new THREE.Vector3(0, 0.055, 0);
                 const localCenter = pos.clone().add(colliderOffset).applyMatrix4(inverse);
-
                 const scale = new THREE.Vector3();
                 wall.getWorldScale(scale);
                 const localRadius = PLAYER_RADIUS / Math.max(scale.x, scale.y, scale.z);
-
                 const sphere = new THREE.Sphere(localCenter, localRadius);
-                const hit = wall.geometry.boundsTree.intersectsSphere(sphere);
-                if (hit) return true;
+                if (wall.geometry.boundsTree.intersectsSphere(sphere)) return true;
             }
             return false;
         }
 
         function smoothCollisionResponse(oldPos, newPos) {
             if (!sphereMeshCollision(newPos)) return newPos;
-
-            const xOnly = newPos.clone();
-            xOnly.z = oldPos.z;
+            const xOnly = newPos.clone(); xOnly.z = oldPos.z;
             if (!sphereMeshCollision(xOnly)) return xOnly;
-
-            const zOnly = newPos.clone();
-            zOnly.x = oldPos.x;
+            const zOnly = newPos.clone(); zOnly.x = oldPos.x;
             if (!sphereMeshCollision(zOnly)) return zOnly;
-
             return oldPos;
         }
 
-        // CAMERA UPDATE
+        // --- CAMERA UPDATE ---
         function updateCamera() {
-            // Priority: Scene 1 runs its own camera animation
-            if (isScene1Active()) return;
-            if (isScene9Active()) return;
-            if (isScene10Active()) return;
-            if (isScene11Active()) return; // Scene 11 handles own camera
+            if (isScene1Active() || isScene9Active() || isScene10Active() || isScene11Active()) return;
 
             if (cctvIndex !== -1) {
                 const cam = cctvCameras[cctvIndex];
-
                 camera.position.set(cam.x, cam.height, cam.z);
-
                 const dir = new THREE.Vector3(
                     Math.sin(cam.yaw * Math.PI / 180) * Math.cos(cam.pitch * Math.PI / 180),
                     Math.sin(cam.pitch * Math.PI / 180),
                     Math.cos(cam.yaw * Math.PI / 180) * Math.cos(cam.pitch * Math.PI / 180)
                 );
-
-                camera.lookAt(
-                    cam.x + dir.x,
-                    cam.height + dir.y,
-                    cam.z + dir.z
-                );
+                camera.lookAt(cam.x + dir.x, cam.height + dir.y, cam.z + dir.z);
                 return;
             }
 
             if (!playerObj) return;
-
-            // Tampilkan/Sembunyikan karakter user
-            if (playerObj) playerObj.mesh.visible = !firstPerson;
+            playerObj.mesh.visible = !firstPerson;
 
             if (firstPerson) {
-                if (playerObj && playerObj.mesh) playerObj.mesh.visible = false;
                 const eye = playerObj.mesh.position.clone();
                 camera.position.set(eye.x, eye.y + PLAYER_RADIUS * 2, eye.z);
-                const forward = new THREE.Vector3(
-                    Math.sin(yaw) * Math.cos(pitch),
-                    Math.sin(pitch),
-                    Math.cos(yaw) * Math.cos(pitch)
-                );
+                const forward = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
                 camera.lookAt(eye.clone().add(forward));
             } else {
-                const center = new THREE.Vector3(
-                    playerObj.mesh.position.x,
-                    0,
-                    playerObj.mesh.position.z
-                );
+                const center = new THREE.Vector3(playerObj.mesh.position.x, 0, playerObj.mesh.position.z);
                 const x = center.x + cameraDistance * Math.cos(camRotationX) * Math.sin(camRotationY);
                 const y = center.y + cameraDistance * Math.sin(camRotationX);
                 const z = center.z + cameraDistance * Math.cos(camRotationX) * Math.cos(camRotationY);
-
                 camera.position.set(x, y, z);
                 camera.lookAt(center);
             }
@@ -482,112 +346,51 @@
 
         function getFPSDirection() {
             const dir = new THREE.Vector3();
-            camera.getWorldDirection(dir);
-            dir.y = 0;
+            camera.getWorldDirection(dir); dir.y = 0;
             return dir.normalize();
         }
 
-        function getFPSRight(fwd) {
-            return new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0));
-        }
-
-        // MAIN LOOP
+        // --- ANIMATION LOOP ---
         function animate() {
             requestAnimationFrame(animate);
-
             const delta = clock.getDelta();
-            if (!playerObj) {
-                renderer.render(scene, camera);
-                return;
-            }
+            if (!playerObj) { renderer.render(scene, camera); return; }
 
-            // Scene controller
-            updateScene1(delta);
-            updateScene2(delta);
-            updateScene6(delta);
-            updateScene9(delta);
-            updateScene10(delta);
-            updateScene11(delta);
-            updateScene12(delta);
-            updateScene16(delta);
-            updateScene5(delta);
+            // Scene Updates
+            updateScene1(delta); updateScene2(delta); updateScene6(delta);
+            updateScene9(delta); updateScene10(delta); updateScene11(delta);
+            updateScene12(delta); updateScene16(delta); updateScene5(delta);
             const isScene14Running = updateScene14(delta);
             const isScene15Running = updateScene15(delta);
 
-            // Player hanya bergerak kalau scene custom tidak aktif
-            if (
-                !isScene1Active() &&
-                !isScene2Active() &&
-                !isScene6Active() &&
-                !isScene9Active() &&
-                !isScene12Active() &&
-                !isScene16Active() &&
-                !isScene14Running &&
-                !isScene15Running &&
-                cctvIndex === -1
-            ) {
+            // Player Movement
+            if (!isScene1Active() && !isScene2Active() && !isScene6Active() && !isScene9Active() && 
+                !isScene12Active() && !isScene16Active() && !isScene14Running && 
+                !isScene15Running && cctvIndex === -1) {
 
                 const oldPos = playerObj.mesh.position.clone();
                 const newPos = oldPos.clone();
                 let moving = false;
 
-                if (firstPerson) {
-                    const fwd = getFPSDirection();
-                    const right = getFPSRight(fwd);
-                    const dir = new THREE.Vector3();
+                const fwd = getFPSDirection();
+                const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+                const dir = new THREE.Vector3();
 
-                    if (keys.w) dir.add(fwd);
-                    if (keys.s) dir.sub(fwd);
-                    if (keys.a) dir.sub(right);
-                    if (keys.d) dir.add(right);
+                if (keys.w) dir.add(fwd); if (keys.s) dir.sub(fwd);
+                if (keys.a) dir.sub(right); if (keys.d) dir.add(right);
 
-                    if (dir.lengthSq() > 0) {
-                        dir.normalize();
-                        newPos.addScaledVector(dir, speed);
-                        moving = true;
-                    }
-                } else {
-                    // Arah kamera
-                    const forward = new THREE.Vector3();
-                    camera.getWorldDirection(forward);
-                    forward.y = 0;
-                    forward.normalize();
-
-                    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
-
-                    const dir = new THREE.Vector3();
-
-                    if (keys.w) dir.add(forward);
-                    if (keys.s) dir.sub(forward);
-                    if (keys.a) dir.sub(right);
-                    if (keys.d) dir.add(right);
-
-                    if (dir.lengthSq() > 0) {
-                        dir.normalize();
-                        newPos.addScaledVector(dir, speed);
-                        moving = true;
-                    }
+                if (dir.lengthSq() > 0) {
+                    dir.normalize();
+                    newPos.addScaledVector(dir, speed);
+                    moving = true;
                 }
 
                 const finalPos = smoothCollisionResponse(oldPos, newPos);
+                playerObj.update(delta, { position: finalPos, oldPosition: oldPos, isMoving: moving });
 
-                playerObj.update(delta, {
-                    position: finalPos,
-                    oldPosition: oldPos,
-                    isMoving: moving
-                });
-
-                document.getElementById("pos").innerText =
-                    "X: " + finalPos.x.toFixed(2) + " | Z: " + finalPos.z.toFixed(2);
-
-                const v = new THREE.Vector3();
-                camera.getWorldDirection(v);
-
-                const yawDeg = Math.atan2(v.x, v.z) * 180 / Math.PI;
-                const pitchDeg = Math.asin(v.y) * 180 / Math.PI;
-
-                document.getElementById("dir").innerText =
-                    "Yaw: " + yawDeg.toFixed(1) + "° | Pitch: " + pitchDeg.toFixed(1) + "°";
+                document.getElementById("pos").innerText = `X: ${finalPos.x.toFixed(2)} | Z: ${finalPos.z.toFixed(2)}`;
+                const v = new THREE.Vector3(); camera.getWorldDirection(v);
+                document.getElementById("dir").innerText = `Yaw: ${(Math.atan2(v.x, v.z) * 180 / Math.PI).toFixed(1)}° | Pitch: ${(Math.asin(v.y) * 180 / Math.PI).toFixed(1)}°`;
             }
 
             updateCamera();
