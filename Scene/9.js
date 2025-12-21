@@ -13,10 +13,12 @@ let sabotageSound = null;
 let successSound = null;
 let breathSound = null;
 let waveSound = null;
+let hahSound = null;
 
 // Sound Flags
 let successPlayed = false;
 let breathPlayed = false;
+let hahPlayed = false;
 let wavePlayedCount = 0; // 0=none, 1=first wave, 2=second wave
 
 // Timing & State
@@ -41,7 +43,7 @@ const HAND_COLOR = "#00ff3c";
 
 // hand Movement
 const hand_START_POS = new THREE.Vector3(0.83, 0.07, -3.27); // Starting near player
-const hand_TARGET_POS = new THREE.Vector3(0.87, 0.097, -3.28);
+const hand_TARGET_POS = new THREE.Vector3(0.872, 0.097, -3.28);
 const hand_MOVE_DURATION = 0.5;
 const hand_STAY_DURATION = 3.0;
 
@@ -93,6 +95,7 @@ export async function initializeScene9(
   sceneTimer = 0;
   successPlayed = false;
   breathPlayed = false;
+  hahPlayed = false;
   wavePlayedCount = 0;
   // Initialize to interval so it blinks immediately
   overlayTimer = OVERLAY_INTERVAL;
@@ -270,6 +273,16 @@ export async function initializeScene9(
           waveSound.setLoop(false);
           waveSound.setVolume(0.5);
         });
+
+        // Hah Sound
+        hahSound = new THREE.Audio(listener);
+        camera.add(hahSound);
+        audioLoader.load("backsound/hahConfused.mp3", (buffer) => {
+          if (!isActive) return;
+          hahSound.setBuffer(buffer);
+          hahSound.setLoop(false);
+          hahSound.setVolume(0.5);
+        });
       }
     }
 
@@ -329,7 +342,7 @@ export function updateScene9(delta) {
       }
     }
   } else {
-    // Stop Sound
+    // Stop Soundsc
     if (sabotageSound && sabotageSound.isPlaying) {
       sabotageSound.stop();
     }
@@ -425,7 +438,6 @@ export function updateScene9(delta) {
     const TURN_START_TIME = TOTAL_ANIM_TIME + STRETCH_DURATION;
     const TURN_DURATION = 0.2;
 
-    // Phase 6: Hand Wave (1.5s)
     // DELAY 0.2s after turn before wave starts
     const WAVE_DELAY = 0.2;
     const WAVE_START_TIME = TURN_START_TIME + TURN_DURATION + WAVE_DELAY;
@@ -520,6 +532,14 @@ export function updateScene9(delta) {
     const SHOCK_START_TIME = WAVE_START_TIME + WAVE_DURATION + SHOCK_DELAY;
     const SHOCK_DURATION = 0.2;
 
+    // Hah Sound (Start of Shock Phase)
+    if (sceneTimer >= SHOCK_START_TIME && !hahPlayed) {
+      if (hahSound && hahSound.buffer) {
+        hahSound.play();
+        hahPlayed = true;
+      }
+    }
+
     if (
       sceneTimer >= SHOCK_START_TIME &&
       sceneTimer < SHOCK_START_TIME + SHOCK_DURATION
@@ -591,6 +611,10 @@ export function clearScene9() {
   if (waveSound) {
     if (waveSound.isPlaying) waveSound.stop();
     waveSound = null;
+  }
+  if (hahSound) {
+    if (hahSound.isPlaying) hahSound.stop();
+    hahSound = null;
   }
 
   if (redOverlay && sceneCamera) {
