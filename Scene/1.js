@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 let isActive = false;
 let scene1PlayerObjects = [];
+let joinSounds = [];
 let sceneReference = null;
 let userPlayerReference = null;
 let sceneCamera = null;
@@ -189,6 +190,7 @@ export async function initializeScene1(
   if (!playerObj) return;
   isActive = true;
   sceneTimer = 0;
+  joinSounds = [];
 
   sceneReference = scene;
   userPlayerReference = playerObj;
@@ -213,6 +215,12 @@ export async function initializeScene1(
 
   userPlayerReference.mesh.visible = false;
 
+  // Get Listener for Sound
+  let listener = null;
+  if (camera) {
+    listener = camera.children.find((c) => c.type === "AudioListener");
+  }
+
   for (let i = 0; i < scene1Data.length; i++) {
     const data = scene1Data[i];
 
@@ -233,6 +241,23 @@ export async function initializeScene1(
 
     player.mesh.visible = true;
     scene1PlayerObjects.push(player);
+
+    // Play Join Sound (Only once)
+    if (listener && i === 0) {
+      const sound = new THREE.Audio(listener);
+      const audioLoader = new THREE.AudioLoader();
+      audioLoader.load(
+        "backsound/among-us-joining-lobby-made-with-Voicemod.mp3",
+        (buffer) => {
+          if (!isActive) return;
+          sound.setBuffer(buffer);
+          sound.setLoop(false);
+          sound.setVolume(0.5);
+          sound.play();
+        }
+      );
+      joinSounds.push(sound);
+    }
   }
 }
 
@@ -364,6 +389,11 @@ export function clearScene1() {
   });
 
   scene1PlayerObjects = [];
+
+  joinSounds.forEach((s) => {
+    if (s.isPlaying) s.stop();
+  });
+  joinSounds = [];
 
   if (userPlayerReference && userPlayerReference.mesh) {
     userPlayerReference.mesh.visible = true;
