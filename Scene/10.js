@@ -5,6 +5,7 @@ let sceneReference = null;
 let userPlayerReference = null;
 let sceneCamera = null;
 let sceneTimer = 0;
+let sceneSound = null; // Variabel untuk menyimpan audio
 
 // Camera Config
 const CAM_START_X = 0.87;
@@ -32,8 +33,26 @@ export function initializeScene10(scene, createPlayerFunc, playerObj, camera) {
     userPlayerReference.mesh.visible = false;
   }
 
-  // Set Initial Camera Pose
+  // ================= AUDIO SETUP =================
   if (camera) {
+    // Mencari AudioListener yang biasanya sudah ditempelkan ke camera di main.js
+    const listener = camera.children.find((c) => c.type === "AudioListener");
+    
+    if (listener) {
+      sceneSound = new THREE.Audio(listener);
+      const audioLoader = new THREE.AudioLoader();
+      
+      audioLoader.load("backsound/sceneHilang.mp3", (buffer) => {
+        if (isActive) { // Cek lagi apakah scene masih aktif saat loading selesai
+          sceneSound.setBuffer(buffer);
+          sceneSound.setLoop(false); // Set true jika ingin berulang
+          sceneSound.setVolume(0.6);
+          sceneSound.play();
+        }
+      });
+    }
+
+    // Set Initial Camera Pose
     camera.position.set(CAM_START_X, CAM_START_Y, CAM_START_Z);
 
     const dir = new THREE.Vector3(
@@ -61,18 +80,17 @@ export function updateScene10(delta) {
 
   // Camera Animation
   if (sceneCamera) {
-    // 0 to 0.3s: Stay at Start
+    // 0 to 0.5s: Stay at Start
     if (sceneTimer < DELAY_TIME) {
       sceneCamera.position.set(CAM_START_X, CAM_START_Y, CAM_START_Z);
     }
-    // 0.3 to 0.5s: Move Z to -2.55
+    // 0.5 to 0.65s: Move Z to -2.55
     else if (sceneTimer < DELAY_TIME + MOVE_DURATION) {
       const t = (sceneTimer - DELAY_TIME) / MOVE_DURATION;
-      // Linear lerp for Z
       const currentZ = CAM_START_Z + (CAM_END_Z - CAM_START_Z) * t;
       sceneCamera.position.set(CAM_START_X, CAM_START_Y, currentZ);
     }
-    // > 0.5s: Stay at Target
+    // > 0.65s: Stay at Target
     else {
       sceneCamera.position.set(CAM_START_X, CAM_START_Y, CAM_END_Z);
     }
@@ -81,6 +99,12 @@ export function updateScene10(delta) {
 
 export function clearScene10() {
   isActive = false;
+
+  // Berhentikan suara saat scene ditutup
+  if (sceneSound && sceneSound.isPlaying) {
+    sceneSound.stop();
+  }
+  sceneSound = null;
 
   if (userPlayerReference && userPlayerReference.mesh) {
     userPlayerReference.mesh.visible = true;
