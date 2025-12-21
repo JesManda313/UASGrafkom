@@ -7,6 +7,7 @@ let sceneRef = null;
 let cameraRef = null;
 let sabotageSound = null;
 let writingSound = null; 
+let surpriseSound = null; // Tambahan variabel sound surprise
 let isActive = false;
 
 // ===== Shock Animation =====
@@ -24,20 +25,16 @@ let afterStretchTime = 0;
 
 // ================= CONFIG =================
 
-// Kecepatan per detik
 const ROTATE_SPEED = THREE.MathUtils.degToRad(240);
 const MOVE_SPEED = 0.2;
 
-// Delay sebelum sabotase dimulai
 const START_DELAY = 4;
 let startDelayTimer = 0;
 let hasStarted = false;
 
-// Timer khusus untuk sound writing (Loop 2x = 2 detik)
 let writingTimer = 0;
 const WRITING_DURATION = 2.0; 
 
-// Overlay merah (efek sabotase)
 let redOverlay = null;
 let overlayTimer = 0;
 let overlayActive = false;
@@ -68,10 +65,8 @@ export async function initializeScene5(scene, camera, createPlayerFunc) {
     const startPos = new THREE.Vector3(2.40, 0.005, -3.02);
     const player = await createPlayerFunc(scene, startPos, lightGreen, camera);
 
-    // Yaw/hadapan awal karakter
     player.mesh.rotation.y = THREE.MathUtils.degToRad(165);
 
-    // ===== Overlay Merah Setup =====
     const overlayGeometry = new THREE.PlaneGeometry(2, 2);
     const overlayMaterial = new THREE.MeshBasicMaterial({
         color: 0xff0000,
@@ -81,7 +76,7 @@ export async function initializeScene5(scene, camera, createPlayerFunc) {
     });
 
     redOverlay = new THREE.Mesh(overlayGeometry, overlayMaterial);
-    redOverlay.position.z = -0.5; // Berada tepat di depan kamera
+    redOverlay.position.z = -0.5; 
     redOverlay.visible = false;
 
     camera.add(redOverlay);
@@ -89,7 +84,6 @@ export async function initializeScene5(scene, camera, createPlayerFunc) {
 
     singleCharacter = player;
 
-    // Reset State Scene
     stepIndex = 0;
     startDelayTimer = 0;
     hasStarted = false;
@@ -102,13 +96,12 @@ export async function initializeScene5(scene, camera, createPlayerFunc) {
     waitAfterStretch = false;
     afterStretchTime = 0;
 
-    // ===== Sound Setup =====
     if (camera) {
         const listener = camera.children.find((c) => c.type === "AudioListener");
         if (listener) {
             const audioLoader = new THREE.AudioLoader();
 
-            // 1. Sabotage Sound (Alarm)
+            // 1. Sabotage Sound
             sabotageSound = new THREE.Audio(listener);
             audioLoader.load("backsound/among-us-alarme-sabotage-393155.mp3", (buffer) => {
                 sabotageSound.setBuffer(buffer);
@@ -116,13 +109,21 @@ export async function initializeScene5(scene, camera, createPlayerFunc) {
                 sabotageSound.setVolume(0.5);
             });
 
-            // 2. Writing Sound (Loop 2x saja)
+            // 2. Writing Sound
             writingSound = new THREE.Audio(listener);
             audioLoader.load("backsound/writing.mp3", (buffer) => {
                 writingSound.setBuffer(buffer);
-                writingSound.setLoop(true); // Diaktifkan agar bisa mengulang ke detik ke-2
+                writingSound.setLoop(true);
                 writingSound.setVolume(0.8);
                 writingSound.play();
+            });
+
+            // 3. Surprise Sound (Tambahan)
+            surpriseSound = new THREE.Audio(listener);
+            audioLoader.load("backsound/surprise-sound-effect-99300.mp3", (buffer) => {
+                surpriseSound.setBuffer(buffer);
+                surpriseSound.setLoop(false); // Sekali putar saja
+                surpriseSound.setVolume(0.3);
             });
         }
     }
@@ -137,7 +138,6 @@ export function updateScene5(delta) {
 
     const mesh = singleCharacter.mesh;
 
-    // ===== Logika Stop Writing Sound (Berhenti setelah 2x putaran / 2 detik) =====
     if (writingSound && writingSound.isPlaying) {
         writingTimer += delta;
         if (writingTimer >= WRITING_DURATION) {
@@ -145,7 +145,6 @@ export function updateScene5(delta) {
         }
     }
 
-    // ===== Logika Delay Awal (Menunggu sebelum karakter bergerak & sabotase nyala) =====
     if (!hasStarted) {
         startDelayTimer += delta;
 
@@ -160,11 +159,17 @@ export function updateScene5(delta) {
             overlayActive = true;
             overlayTimer = 0;
             redOverlay.visible = true;
+            
+            // Aktifkan Shock/Stretch
             isStretching = true;
             stretchTime = 0;
             baseScale.copy(mesh.scale);
             
-            // Nyalakan alarm sabotase
+            // --- PLAY SURPRISE SOUND DI SINI ---
+            if (surpriseSound && !surpriseSound.isPlaying && surpriseSound.buffer) {
+                surpriseSound.play();
+            }
+
             if (sabotageSound && !sabotageSound.isPlaying && sabotageSound.buffer) {
                 sabotageSound.play();
             }
@@ -172,7 +177,6 @@ export function updateScene5(delta) {
         return;
     }
     
-    // ===== Logika Kedipan Overlay Merah =====
     if (redOverlay) {
         overlayTimer += delta;
         if (!overlayActive && overlayTimer >= OVERLAY_INTERVAL) {
@@ -190,23 +194,12 @@ export function updateScene5(delta) {
     if (isStretching) {
         stretchTime += delta;
         const half = STRETCH_DURATION / 2;
-
         let stretchFactor;
 
         if (stretchTime <= half) {
-            // naik
-            stretchFactor = THREE.MathUtils.lerp(
-                1,
-                STRETCH_AMOUNT,
-                stretchTime / half
-            );
+            stretchFactor = THREE.MathUtils.lerp(1, STRETCH_AMOUNT, stretchTime / half);
         } else if (stretchTime <= STRETCH_DURATION) {
-            // turun
-            stretchFactor = THREE.MathUtils.lerp(
-                STRETCH_AMOUNT,
-                1,
-                (stretchTime - half) / half
-            );
+            stretchFactor = THREE.MathUtils.lerp(STRETCH_AMOUNT, 1, (stretchTime - half) / half);
         } else {
             mesh.scale.copy(baseScale);
             isStretching = false;
@@ -215,51 +208,30 @@ export function updateScene5(delta) {
             return;
         }
 
-        mesh.scale.set(
-            baseScale.x,
-            baseScale.y * stretchFactor,
-            baseScale.z
-        );
-
+        mesh.scale.set(baseScale.x, baseScale.y * stretchFactor, baseScale.z);
         singleCharacter.update(delta, {
-            position: mesh.position,
-            oldPosition: mesh.position,
-            isMoving: false
+            position: mesh.position, oldPosition: mesh.position, isMoving: false
         });
-
         return;
     }
 
     if (waitAfterStretch) {
         afterStretchTime += delta;
-
         singleCharacter.update(delta, {
-            position: mesh.position,
-            oldPosition: mesh.position,
-            isMoving: false
+            position: mesh.position, oldPosition: mesh.position, isMoving: false
         });
-
-        if (afterStretchTime >= AFTER_STRETCH_DELAY) {
-            waitAfterStretch = false;
-        }
-
+        if (afterStretchTime >= AFTER_STRETCH_DELAY) waitAfterStretch = false;
         return;
     }
 
-    // ===== Logika Pergerakan Karakter (Pathfinding) =====
     const step = pathSteps[stepIndex];
-
     if (!step) {
-        // Jika path sudah habis, karakter diam di tempat
         singleCharacter.update(delta, {
-            position: mesh.position,
-            oldPosition: mesh.position,
-            isMoving: false
+            position: mesh.position, oldPosition: mesh.position, isMoving: false
         });
         return;
     }
 
-    // ROTASI
     if (step.type === "rotate") {
         const targetYaw = THREE.MathUtils.degToRad(step.targetYaw);
         const rotateStep = ROTATE_SPEED * delta;
@@ -268,9 +240,7 @@ export function updateScene5(delta) {
             mesh.rotation.y = targetYaw;
             stepIndex++;
         }
-    }
-    // JALAN
-    else if (step.type === "move") {
+    } else if (step.type === "move") {
         const moveStep = MOVE_SPEED * delta;
         const dir = step.targetPos.clone().sub(mesh.position);
         const dist = dir.length();
@@ -297,40 +267,26 @@ export function updateScene5(delta) {
 export function clearScene5() {
     if (!singleCharacter) return;
 
-    // Stop animasi player
     if (singleCharacter.mixer) singleCharacter.mixer.stopAllAction();
-    if (singleCharacter.stopAll) singleCharacter.stopAll();
-
-    // Hapus karakter dari scene
     if (sceneRef) sceneRef.remove(singleCharacter.mesh);
 
-    // Hentikan semua suara
-    if (sabotageSound) {
-        if (sabotageSound.isPlaying) sabotageSound.stop();
-        sabotageSound = null;
-    }
-    if (writingSound) {
-        if (writingSound.isPlaying) writingSound.stop();
-        writingSound = null;
-    }
+    if (sabotageSound && sabotageSound.isPlaying) sabotageSound.stop();
+    if (writingSound && writingSound.isPlaying) writingSound.stop();
+    if (surpriseSound && surpriseSound.isPlaying) surpriseSound.stop(); // Hentikan surprise sound
 
-    // Hapus overlay merah
     if (redOverlay && cameraRef) {
         cameraRef.remove(redOverlay);
         redOverlay.geometry.dispose();
         redOverlay.material.dispose();
     }
 
-    // Reset variabel global
+    sabotageSound = null;
+    writingSound = null;
+    surpriseSound = null; // Reset
     redOverlay = null;
-    overlayTimer = 0;
-    overlayActive = false;
-    writingTimer = 0;
     singleCharacter = null;
     isActive = false;
 }
-
-// ================= STATE CHECK =================
 
 export function isScene5Active() {
     return isActive;
