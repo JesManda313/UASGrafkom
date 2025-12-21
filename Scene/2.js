@@ -23,7 +23,7 @@ const scene2MovementData = [
             new THREE.Vector3(6.22, 0.005, -3.66),
             new THREE.Vector3(6.40, 0.005, -3.58),
             new THREE.Vector3(6.70, 0.005, -3.61),
-            new THREE.Vector3(6.72, 0.005, -3.92),
+            new THREE.Vector3(6.8, 0.005, -3.92),
             new THREE.Vector3(6.95, 0.005, -3.92)
         ],
         yawEnd: 155.4 * Math.PI / 180
@@ -195,22 +195,7 @@ export async function initializeScene2(scene, createPlayerFunc, playerObj, camer
         scene2PlayerObjects.push(player);
     }
 
-    // AUDIO LOGIC
-    if (camera) {
-        const listener = camera.children.find(c => c.type === 'AudioListener');
-        if (listener) {
-            sound = new THREE.Audio(listener);
-            const audioLoader = new THREE.AudioLoader();
-            // Load file: pastikan nama file sesuai (audio_scene2.mp3)
-            audioLoader.load('assets/audio_scene2.mp3', function (buffer) {
-                if (!isActive) return; // Cegah play jika scene sudah keburu ditutup
-                sound.setBuffer(buffer);
-                sound.setLoop(true);
-                sound.setVolume(0.5);
-                sound.play();
-            });
-        }
-    }
+
 }
 
 export function updateScene2(delta) {
@@ -250,11 +235,6 @@ export function clearScene2() {
     scene2PlayerObjects = [];
     isActive = false;
 
-    // Stop Audio
-    if (sound) {
-        if (sound.isPlaying) sound.stop();
-        sound = null;
-    }
 
     if (userPlayerReference) userPlayerReference.mesh.visible = true;
 }
