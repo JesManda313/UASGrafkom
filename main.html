@@ -154,10 +154,6 @@
         sun.shadow.camera.bottom = -5;
         sun.shadow.bias = 0;
         sun.shadow.normalBias = 0.005;
-        const sunHelper = new THREE.DirectionalLightHelper(sun, 0.3, 0xffaa00);
-        scene.add(sunHelper);
-        const camHelper = new THREE.CameraHelper(sun.shadow.camera);
-        scene.add(camHelper);
 
         // --- BACKGROUND ---
         new RGBELoader().load(
