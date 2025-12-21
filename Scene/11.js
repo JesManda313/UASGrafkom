@@ -7,6 +7,9 @@ let userPlayerReference = null;
 let sceneCamera = null;
 let sceneTimer = 0;
 
+let swooshSound = null;
+let swooshPlayedCount = 0;
+
 const GREEN_COLOR = "#00ff3c";
 const PLAYER_START_POS = new THREE.Vector3(0.83, 0.005, -3.24);
 const PLAYER_TARGET_POS = new THREE.Vector3(0.77, 0.005, -2.61);
@@ -39,7 +42,9 @@ export async function initializeScene11(
 ) {
   if (!playerObj) return;
   isActive = true;
+  isActive = true;
   sceneTimer = 0;
+  swooshPlayedCount = 0;
   sceneReference = scene;
   userPlayerReference = playerObj;
   sceneCamera = camera;
@@ -58,6 +63,23 @@ export async function initializeScene11(
     );
 
     if (camera) {
+      // Audio Setup
+      const listener = camera.children.find((c) => c.type === "AudioListener");
+      if (listener) {
+        swooshSound = new THREE.Audio(listener);
+        camera.add(swooshSound);
+        const audioLoader = new THREE.AudioLoader();
+        audioLoader.load(
+          "backsound/swoosh-sound-effect-for-fight-scenes-or-transitions-2-149890.mp3",
+          (buffer) => {
+            if (!isActive) return;
+            swooshSound.setBuffer(buffer);
+            swooshSound.setLoop(false);
+            swooshSound.setVolume(0.5);
+          }
+        );
+      }
+
       // Set Camera Initial Pose
       camera.position.set(CAM_START_X, CAM_START_Y, CAM_START_Z);
 
@@ -101,7 +123,6 @@ export function updateScene11(delta) {
     userPlayerReference.mesh.visible = false;
   }
 
-  // Ensure Y is constant (only X/Z animate)
   if (sceneCamera) {
     sceneCamera.position.y = CAM_START_Y;
   }
@@ -136,6 +157,22 @@ export function updateScene11(delta) {
       // Double sway for "Kiri Kanan" but aligned with Camera
       const rotOffset = Math.sin(t * Math.PI * 2) * 0.3;
       scene11Player.mesh.rotation.y = initialRotationY + rotOffset;
+
+      // Swoosh Sound Triggers
+      if (swooshPlayedCount === 0) {
+        if (swooshSound && swooshSound.buffer) {
+          if (swooshSound.isPlaying) swooshSound.stop();
+          swooshSound.play();
+          swooshPlayedCount = 1;
+        }
+      }
+      if (swooshPlayedCount === 1 && t >= 0.5) {
+        if (swooshSound && swooshSound.buffer) {
+          if (swooshSound.isPlaying) swooshSound.stop();
+          swooshSound.play();
+          swooshPlayedCount = 2;
+        }
+      }
     }
     // Phase 3: 2s - 5s (Move to Target)
     else if (sceneTimer < 5.0) {
@@ -213,6 +250,11 @@ export function clearScene11() {
     if (sceneReference && scene11Player.mesh)
       sceneReference.remove(scene11Player.mesh);
     scene11Player = null;
+  }
+
+  if (swooshSound) {
+    if (swooshSound.isPlaying) swooshSound.stop();
+    swooshSound = null;
   }
 
   if (userPlayerReference && userPlayerReference.mesh) {
