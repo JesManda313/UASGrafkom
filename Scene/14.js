@@ -1,26 +1,50 @@
 import * as THREE from "three";
 
-const CHARACTER_SPEED = 0.2; // Slow speed for small area
+const CHARACTER_SPEED = 0.2;
 const SMOOTH_FACTOR = 0.05;
+const BASE_SCALE = 0.019;
 
 const scene14MovementData = [
     {
-        color: "#00ff3c", // Default as requested or standard
+        color: "#00ff3c",
         start: new THREE.Vector3(0.79, 0.005, -2.55),
         startYaw: -91.9 * Math.PI / 180,
         path: [
-            // 1. Diam di tempat, putar ke Yaw 47.5
             {
                 pos: new THREE.Vector3(0.79, 0.005, -2.55),
-                wait: 2.0, // Waktu tunggu untuk putar
-                yaw: 47.5 * Math.PI / 180
+                wait: 1.0,
+                yaw: -91.9 * Math.PI / 180,
+                doStretch: false,
+                playSwoosh: false
             },
-            // 2. Jalan ke 0.98, -2.40 (Yaw otomatis mengikuti arah jalan ~56 deg)
+            {
+                pos: new THREE.Vector3(0.79, 0.005, -2.55),
+                wait: 1.0,
+                yaw: 47.5 * Math.PI / 180,
+                doStretch: false,
+                playSwoosh: true
+            },
+            {
+                pos: new THREE.Vector3(0.79, 0.005, -2.55),
+                wait: 0.7,
+                yaw: 47.5 * Math.PI / 180,
+                doStretch: false
+            },
+            {
+                pos: new THREE.Vector3(0.79, 0.005, -2.55),
+                wait: 0.45,
+                yaw: 47.5 * Math.PI / 180,
+                doStretch: true
+            },
+            {
+                pos: new THREE.Vector3(0.79, 0.005, -2.55),
+                wait: 0.5,
+                yaw: 47.5 * Math.PI / 180,
+                doStretch: false
+            },
             new THREE.Vector3(0.98, 0.005, -2.40),
-            // 3. Jalan ke 1.03, -2.36
             new THREE.Vector3(1.03, 0.005, -2.36)
         ],
-        // 4. Akhirnya putar ke -6.9
         yawEnd: -6.9 * Math.PI / 180
     }
 ];
@@ -30,37 +54,75 @@ let scene14PlayerObjects = [];
 let sceneReference = null;
 let userPlayerReference = null;
 
-// --- LOGIC PERGERAKAN (Disederhanakan dari Scene 2) ---
+// Variabel Audio
+let swooshSound = null;
+let surpriseSound = null;
+let scene14Audio = null; // Audio baru
+
+function playEffect(sound) {
+    if (sound && sound.buffer) {
+        if (sound.isPlaying) sound.stop();
+        sound.play();
+    }
+}
 
 function updateCharacterMovement(player, delta) {
+    // Logika Timer Audio Scene 14 (Berjalan secara independen setelah stretch selesai)
+    if (player.pendingSceneAudio) {
+        player.sceneAudioTimer += delta;
+        if (player.sceneAudioTimer >= 0.75) { // Jeda 1 detik
+            playEffect(scene14Audio);
+            player.pendingSceneAudio = false;
+            player.sceneAudioTimer = 0;
+        }
+    }
 
     if (player.isWaiting) {
         player.isMoving = false;
 
-        // Yaw Smoothing
         if (player.targetYaw !== null) {
             let currentYaw = player.mesh.rotation.y;
             let targetYaw = player.targetYaw;
-
             let deltaYaw = targetYaw - currentYaw;
-            // Normalize angle -PI to PI
+
             while (deltaYaw > Math.PI) deltaYaw -= 2 * Math.PI;
             while (deltaYaw < -Math.PI) deltaYaw += 2 * Math.PI;
 
-            currentYaw += deltaYaw * SMOOTH_FACTOR; // Smooth rotation
+            if (player.needsSwooshSound && Math.abs(deltaYaw) > 0.05) {
+                playEffect(swooshSound);
+                player.needsSwooshSound = false;
+            }
 
-            // Snap if close
+            currentYaw += deltaYaw * SMOOTH_FACTOR;
             if (Math.abs(deltaYaw) < 0.01) currentYaw = targetYaw;
-
             player.mesh.rotation.y = currentYaw;
         }
 
+        if (player.shouldStretch) {
+            if (player.needsSurpriseSound) {
+                playEffect(surpriseSound);
+                player.needsSurpriseSound = false;
+            }
+
+            const t = player.waitTimer / player.waitDuration;
+            const stretchFactor = 1 + Math.sin(t * Math.PI) * 0.2;
+            player.mesh.scale.set(BASE_SCALE, BASE_SCALE * stretchFactor, BASE_SCALE);
+        }
+
         player.waitTimer += delta;
+
         if (player.waitTimer >= player.waitDuration) {
+            // Cek jika baru saja selesai melakukan stretch
+            if (player.shouldStretch) {
+                player.pendingSceneAudio = true;
+                player.sceneAudioTimer = 0;
+            }
+
+            player.mesh.scale.set(BASE_SCALE, BASE_SCALE, BASE_SCALE);
             player.isWaiting = false;
+            player.shouldStretch = false;
             player.waitTimer = 0;
             player.currentGoal = null;
-            player.targetYaw = null;
         }
         return false;
     }
@@ -69,57 +131,41 @@ function updateCharacterMovement(player, delta) {
         let nextGoal = player.targetPath.shift();
 
         if (nextGoal.pos && nextGoal.wait !== undefined) {
-            // Ini adalah instruction untuk WAIT + ROTATE
-            player.currentGoal = nextGoal.pos; // Sebenarnya posisinya sama, tapi kita set target
+            player.currentGoal = nextGoal.pos;
             player.waitDuration = nextGoal.wait;
             player.isWaiting = true;
             player.targetYaw = nextGoal.yaw !== undefined ? nextGoal.yaw : null;
-        } else if (nextGoal instanceof THREE.Vector3) {
-            player.currentGoal = nextGoal;
+            player.shouldStretch = nextGoal.doStretch || false;
+            player.needsSwooshSound = nextGoal.playSwoosh || false;
+            player.needsSurpriseSound = nextGoal.doStretch || false;
         } else {
-            player.currentGoal = new THREE.Vector3(nextGoal.x, nextGoal.y, nextGoal.z);
+            player.currentGoal = nextGoal instanceof THREE.Vector3
+                ? nextGoal
+                : new THREE.Vector3(nextGoal.x, nextGoal.y, nextGoal.z);
         }
     }
 
     if (player.currentGoal) {
-        const oldPos = player.mesh.position.clone();
-        const dir = player.currentGoal.clone().sub(oldPos);
+        const dir = player.currentGoal.clone().sub(player.mesh.position);
         dir.y = 0;
 
-        const distance = dir.length();
-
-        // Kalau jarak masih jauh, jalan
-        if (distance > CHARACTER_SPEED * delta) {
+        if (dir.length() > CHARACTER_SPEED * delta) {
             dir.normalize();
-            const newPos = oldPos.clone().addScaledVector(dir, CHARACTER_SPEED * delta);
-
-            // Menghadap arah jalan
-            const yaw = Math.atan2(dir.x, dir.z);
-            // Simple rotation snap for walking (or smooth it if desired, but snap is safer for pathing)
-            player.mesh.rotation.y = yaw;
-
-            player.mesh.position.copy(newPos);
+            player.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+            player.mesh.position.addScaledVector(dir, CHARACTER_SPEED * delta);
             player.isMoving = true;
-            return true;
         } else {
-            // Sudah sampai
             player.mesh.position.copy(player.currentGoal);
             player.currentGoal = null;
             player.isMoving = false;
 
-            if (player.isWaiting) {
-                return false;
-            } else if (player.targetPath.length === 0) {
-                // Selesai semua path, set final rotation
-                player.targetYaw = player.yawEnd; // Kita gunakan mekanisme waiting untuk final rot
-                player.waitDuration = 9999; // Abadi diam
+            if (player.targetPath.length === 0) {
+                player.targetYaw = player.yawEnd;
+                player.waitDuration = 9999;
                 player.isWaiting = true;
-                return false;
             }
-            return true;
         }
     }
-
     return false;
 }
 
@@ -129,39 +175,67 @@ export async function initializeScene14(scene, createPlayerFunc, playerObj, came
     sceneReference = scene;
     userPlayerReference = playerObj;
 
-    // Sembunyikan player user jika ada
-    if (userPlayerReference && userPlayerReference.mesh) {
-        userPlayerReference.mesh.visible = false;
+    if (camera) {
+        const listener = camera.children.find(c => c.type === "AudioListener") || new THREE.AudioListener();
+        if (!camera.children.includes(listener)) camera.add(listener);
+
+        const audioLoader = new THREE.AudioLoader();
+
+        swooshSound = new THREE.Audio(listener);
+        audioLoader.load(
+            "backsound/swoosh-sound-effect-for-fight-scenes-or-transitions-2-149890.mp3",
+            buffer => {
+                swooshSound.setBuffer(buffer);
+                swooshSound.setVolume(0.5);
+            }
+        );
+
+        surpriseSound = new THREE.Audio(listener);
+        audioLoader.load(
+            "backsound/surprise-sound-effect-99300.mp3",
+            buffer => {
+                surpriseSound.setBuffer(buffer);
+                surpriseSound.setVolume(0.6);
+            }
+        );
+
+        // Load Audio Scene 14 Baru
+        scene14Audio = new THREE.Audio(listener);
+        audioLoader.load(
+            "backsound/scene14Audio.mp3",
+            buffer => {
+                scene14Audio.setBuffer(buffer);
+                scene14Audio.setVolume(0.7);
+            }
+        );
     }
+
+    if (userPlayerReference?.mesh) userPlayerReference.mesh.visible = false;
 
     for (let i = 0; i < scene14MovementData.length; i++) {
         const data = scene14MovementData[i];
-
-        // Buat NPC
-        // createPlayerFunc(scene, startPos, color)
         const player = await createPlayerFunc(scene, data.start, data.color || "#ff0000", camera);
 
-        // Set rotasi awal
         if (data.startYaw !== undefined) {
             player.mesh.rotation.y = data.startYaw;
         }
 
-        // Setup properties
+        player.mesh.scale.set(BASE_SCALE, BASE_SCALE, BASE_SCALE);
+
         player.targetPath = data.path.map(item => {
-            if (item.pos) return { pos: item.pos.clone(), wait: item.wait, yaw: item.yaw };
-            if (item instanceof THREE.Vector3) return item.clone();
-            return new THREE.Vector3(item.x, item.y, item.z);
+            if (item.pos) return { ...item, pos: item.pos.clone() };
+            return item.clone();
         });
 
         player.yawEnd = data.yawEnd;
-        player.currentGoal = null;
-        player.isMoving = false;
         player.isWaiting = false;
-        player.waitDuration = 0;
         player.waitTimer = 0;
-        player.targetYaw = null;
+        player.waitDuration = 0;
+        
+        // Inisialisasi status timer audio scene14 pada player
+        player.pendingSceneAudio = false;
+        player.sceneAudioTimer = 0;
 
-        player.mesh.visible = true;
         scene14PlayerObjects.push(player);
     }
 
@@ -173,12 +247,8 @@ export function updateScene14(delta) {
 
     scene14PlayerObjects.forEach(player => {
         const oldPos = player.mesh.position.clone();
+        updateCharacterMovement(player, delta);
 
-        // Panggil logic pergerakan
-        const moved = updateCharacterMovement(player, delta);
-
-        // Update animasi mixer & visual
-        // note: player.update dari character.js biasanya handle mixer.update
         if (player.update) {
             player.update(delta, {
                 position: player.mesh.position,
@@ -188,22 +258,17 @@ export function updateScene14(delta) {
         }
     });
 
-    if (document.getElementById("pos")) document.getElementById("pos").innerText = "Scene 14 Active";
-
     return true;
 }
 
 export function clearScene14() {
     if (!scene14Active) return;
 
+    if (swooshSound?.isPlaying) swooshSound.stop();
+    if (surpriseSound?.isPlaying) surpriseSound.stop();
+    if (scene14Audio?.isPlaying) scene14Audio.stop(); // Hentikan audio baru saat cleanup
+
     scene14PlayerObjects.forEach(player => {
-        if (player.update) {
-            player.update(0, {
-                position: player.mesh.position,
-                oldPosition: player.mesh.position,
-                isMoving: false,
-            });
-        }
         if (player.mixer) player.mixer.stopAllAction();
         if (sceneReference) sceneReference.remove(player.mesh);
     });
@@ -211,8 +276,5 @@ export function clearScene14() {
     scene14PlayerObjects = [];
     scene14Active = false;
 
-    // Munculkan lagi player user
-    if (userPlayerReference && userPlayerReference.mesh) {
-        userPlayerReference.mesh.visible = true;
-    }
+    if (userPlayerReference?.mesh) userPlayerReference.mesh.visible = true;
 }

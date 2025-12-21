@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.167/examples/jsm/loaders/GLTFLoader.js";
 
 let scene15Active = false;
 let scene15PlayerObjects = [];
@@ -6,11 +7,46 @@ let sceneReference = null;
 let userPlayerReference = null;
 let scene15StartTime = 0;
 
-// Position: 1.07, 0.005, -2.27
+// HAND
+let handGroup = null;
+let handFadeStart = 0;
+
+// AUDIO
+let scene15Listener = null;
+let scene15Sound = null;
+
+// =====================
+// CHARACTER POSITION
+// =====================
 const POS_X = 1.07;
 const POS_Y = 0.000001;
 const POS_Z = -2.28;
-const YAW_DEG = -50.6; // Match end of Scene 14
+const YAW_DEG = -50.6;
+
+// =====================
+// HAND TRANSFORM (TARGET)
+// =====================
+const HAND_X = 1.04;
+const HAND_Y = 0.015;
+const HAND_Z = -2.22;
+
+const HAND_START_X = HAND_X - 0.01;
+
+const HAND_YAW = 129.7 * Math.PI / 180;
+const HAND_PITCH = -7 * Math.PI / 180;
+const HAND_ROLL = -45 * Math.PI / 180;
+
+// =====================
+// TIMING
+// =====================
+const TILT_START = 2.0;
+const TILT_DURATION = 2.0;
+
+const HAND_APPEAR_TIME = 0.8;
+const HAND_FADE_DURATION = 0.6;
+const HAND_RISE = 0.02;
+
+// =====================
 
 export async function initializeScene15(scene, createPlayerFunc, playerObj, camera) {
     if (scene15Active) return;
@@ -18,30 +54,92 @@ export async function initializeScene15(scene, createPlayerFunc, playerObj, came
     sceneReference = scene;
     userPlayerReference = playerObj;
 
-    // Sembunyikan player user jika ada
-    if (userPlayerReference && userPlayerReference.mesh) {
+    if (userPlayerReference?.mesh) {
         userPlayerReference.mesh.visible = false;
     }
 
-    // Create NPC
-    const startPos = new THREE.Vector3(POS_X, POS_Y, POS_Z);
-    const color = "#00ff3c"; // Green as requested in 14.js
+    // =====================
+    // AUDIO SETUP
+    // =====================
+    scene15Listener = new THREE.AudioListener();
+    camera.add(scene15Listener);
 
-    const player = await createPlayerFunc(scene, startPos, color, camera);
+    scene15Sound = new THREE.Audio(scene15Listener);
+    const audioLoader = new THREE.AudioLoader();
 
-    // Set Orientation
-    // Set Rotation Order to ensure Yaw applies first, then Pitch
+    audioLoader.load("backsound/scene15Audio.mp3", (buffer) => {
+        scene15Sound.setBuffer(buffer);
+        scene15Sound.setLoop(false);
+        scene15Sound.setVolume(0.7);
+        scene15Sound.play();
+    });
+
+    // =====================
+    // CREATE CHARACTER
+    // =====================
+    const player = await createPlayerFunc(
+        scene,
+        new THREE.Vector3(POS_X, POS_Y, POS_Z),
+        "#00ff3c",
+        camera
+    );
+
     player.mesh.rotation.order = "YXZ";
-
-    // Yaw (Y-axis)
     player.mesh.rotation.y = YAW_DEG * Math.PI / 180;
-
-    // Orientasi Awal: Tegak
     player.mesh.rotation.x = 0;
-    player.mesh.rotation.z = 0;
 
-    player.mesh.visible = true;
     scene15PlayerObjects.push(player);
+
+    // =====================
+    // LOAD HAND
+    // =====================
+    const loader = new GLTFLoader();
+    loader.load("assets/tangan.glb", (gltf) => {
+        if (!scene15Active) return;
+
+        const handContainer = new THREE.Group();
+
+        gltf.scene.traverse(obj => {
+            if (
+                obj.isMesh &&
+                (obj.name.toLowerCase().includes("nose2") ||
+                 obj.name.toLowerCase().includes("nose3"))
+            ) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: 0x00cc30,
+                    transparent: true,
+                    opacity: 0,
+                    side: THREE.DoubleSide
+                });
+
+                const mesh = obj.clone();
+                mesh.material = mat;
+                handContainer.add(mesh);
+
+                const outline = obj.clone();
+                outline.material = new THREE.MeshBasicMaterial({
+                    color: 0x000000,
+                    side: THREE.BackSide
+                });
+                outline.scale.multiplyScalar(1.05);
+                handContainer.add(outline);
+            }
+        });
+
+        handContainer.scale.set(0.0009, 0.0009, 0.0009);
+        handContainer.position.set(
+            HAND_START_X,
+            HAND_Y - HAND_RISE,
+            HAND_Z
+        );
+
+        handContainer.rotation.order = "YXZ";
+        handContainer.rotation.set(HAND_PITCH, HAND_YAW, HAND_ROLL);
+
+        handContainer.visible = false;
+        scene.add(handContainer);
+        handGroup = handContainer;
+    });
 
     scene15Active = true;
     scene15StartTime = performance.now();
@@ -50,33 +148,48 @@ export async function initializeScene15(scene, createPlayerFunc, playerObj, came
 export function updateScene15(delta) {
     if (!scene15Active) return false;
 
-    // Static scene, no movement updates needed. 
-    // Just keep mixer running if there's idle animation (breathing)
+    const elapsed = (performance.now() - scene15StartTime) / 1000;
+
+    // =====================
+    // CHARACTER TILT
+    // =====================
     scene15PlayerObjects.forEach(player => {
         if (player.mixer) player.mixer.update(delta);
 
-        // ANIMASI CONDONG KE DEPAN (TILT FORWARD)
-        const elapsed = (performance.now() - scene15StartTime) / 1000;
-        const startDelay = 2.0;    // Jeda sebelum mulai menunduk
-        const duration = 2.0;      // Durasi gerakan menunduk
-
-        // Target kemiringan (dalam radian). 
-        // 15 derajat = 15 * Math.PI / 180 = ~0.26 rad
-        // "Sedikit condong" -> Coba 15 derajat.
-        const targetTilt = 15 * Math.PI / 180;
-
-        if (elapsed > startDelay) {
-            const t = Math.min((elapsed - startDelay) / duration, 1.0);
-            const smoothT = t * t * (3 - 2 * t); // Easing
-
-            // Gunakan minus jika positif malah mendongak
-            player.mesh.rotation.x = smoothT * targetTilt;
-        } else {
-            player.mesh.rotation.x = 0;
+        if (elapsed > TILT_START) {
+            const t = Math.min((elapsed - TILT_START) / TILT_DURATION, 1);
+            const smooth = t * t * (3 - 2 * t);
+            player.mesh.rotation.x = smooth * (15 * Math.PI / 180);
         }
     });
 
-    if (document.getElementById("pos")) document.getElementById("pos").innerText = "Scene 15 Active: Looking Down";
+    // =====================
+    // HAND APPEAR + MOVE
+    // =====================
+    if (handGroup && elapsed >= HAND_APPEAR_TIME) {
+        if (handFadeStart === 0) {
+            handFadeStart = elapsed;
+            handGroup.visible = true;
+        }
+
+        const t = Math.min(
+            (elapsed - handFadeStart) / HAND_FADE_DURATION,
+            1
+        );
+        const smooth = t * t * (3 - 2 * t);
+
+        handGroup.position.x =
+            HAND_START_X + (HAND_X - HAND_START_X) * smooth;
+
+        handGroup.position.y =
+            HAND_Y - HAND_RISE + HAND_RISE * smooth;
+
+        handGroup.traverse(obj => {
+            if (obj.material?.transparent) {
+                obj.material.opacity = smooth;
+            }
+        });
+    }
 
     return true;
 }
@@ -84,20 +197,26 @@ export function updateScene15(delta) {
 export function clearScene15() {
     if (!scene15Active) return;
 
-    scene15PlayerObjects.forEach(player => {
-        if (player.mixer) player.mixer.stopAllAction();
-        if (sceneReference) {
-            // Reset rotation before removing just in case, though new instances are created
-            // Removing mesh from scene
-            sceneReference.remove(player.mesh);
-        }
+    scene15PlayerObjects.forEach(p => {
+        if (p.mixer) p.mixer.stopAllAction();
+        sceneReference.remove(p.mesh);
     });
+
+    if (handGroup) {
+        sceneReference.remove(handGroup);
+        handGroup = null;
+    }
+
+    // STOP AUDIO
+    if (scene15Sound && scene15Sound.isPlaying) {
+        scene15Sound.stop();
+    }
 
     scene15PlayerObjects = [];
     scene15Active = false;
+    handFadeStart = 0;
 
-    // Munculkan lagi player user
-    if (userPlayerReference && userPlayerReference.mesh) {
+    if (userPlayerReference?.mesh) {
         userPlayerReference.mesh.visible = true;
     }
 }

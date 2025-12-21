@@ -34,7 +34,7 @@ const scene2MovementData = [
         path: [
             { pos: new THREE.Vector3(6.14, 0.005, -3.77), wait: 5.0 },
             new THREE.Vector3(6.44, 0.005, -3.57),
-            new THREE.Vector3(6.64, 0.005, -3.18)
+            new THREE.Vector3(6.52, 0.005, -3.31)
         ],
         yawEnd: 33.8 * Math.PI / 180
     },
