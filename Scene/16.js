@@ -31,7 +31,7 @@ const START_YAW = THREE.MathUtils.degToRad(-80);
 const TARGET_YAW = THREE.MathUtils.degToRad(90);
 
 const ROTATE_STEP = THREE.MathUtils.degToRad(6);
-const ROTATE_DELAY = 0.6;
+const ROTATE_DELAY = 2;
 
 let delayTimer = 0;
 let startRotate = false;
@@ -39,6 +39,26 @@ let startRotate = false;
 const GUN_POSITION = new THREE.Vector3(1.07, 0.033, -2.35);
 
 let gunShotSound = null;
+
+const SHOOT_DELAY = 2.8;
+
+let shootDelayTime = 0;
+let waitForShoot = false;
+
+
+// stretch config
+const STRETCH_DURATION = 0.2;
+const STRETCH_AMOUNT = 1.35;
+
+let isStretching = false;
+let stretchTime = 0;
+let baseScale = new THREE.Vector3();
+
+const AFTER_STRETCH_DELAY = 1;
+
+let afterStretchTime = 0;
+let waitAfterStretch = false;
+
 
 export async function initializeScene16(scene, createPlayerFunc, camera) {
     if (singleCharacter) return;
@@ -55,6 +75,16 @@ export async function initializeScene16(scene, createPlayerFunc, camera) {
     startRotate = false;
     recoilTriggered = false;
     isRecoiling = false;
+
+    isStretching = false;
+    stretchTime = 0;
+
+    afterStretchTime = 0;
+    waitAfterStretch = false;
+
+    shootDelayTime = 0;
+    waitForShoot = false;
+
 
     const loader = new GLTFLoader();
     loader.load("assets/m1911.glb", gltf => {
@@ -87,21 +117,77 @@ export function updateScene16(delta) {
 
     const mesh = singleCharacter.mesh;
 
-    // fase delay
-    if (!startRotate) {
+    // fase delay sebelum stretch
+    if (!isStretching && !startRotate && !waitAfterStretch) {
         delayTimer += delta;
         if (delayTimer >= ROTATE_DELAY) {
+            isStretching = true;
+            stretchTime = 0;
+            baseScale.copy(mesh.scale);
+        }
+    }
+
+    // fase stretch kaget
+    else if (isStretching) {
+        stretchTime += delta;
+        const t = Math.min(stretchTime / STRETCH_DURATION, 1);
+
+        let stretchFactor;
+        if (t < 0.2) {
+            // naik
+            stretchFactor = THREE.MathUtils.lerp(1, STRETCH_AMOUNT, t / 0.2);
+        } else {
+            // turun
+            stretchFactor = THREE.MathUtils.lerp(
+                STRETCH_AMOUNT,
+                1,
+                (t - 0.5) / 0.5
+            );
+        }
+
+        mesh.scale.set(
+            baseScale.x,
+            baseScale.y * stretchFactor,
+            baseScale.z
+        );
+
+        if (t >= 1) {
+            mesh.scale.copy(baseScale);
+            isStretching = false;
+
+            waitAfterStretch = true;
+            afterStretchTime = 0;
+        }
+    }
+
+    // fase delay setelah stretch
+    else if (waitAfterStretch) {
+        afterStretchTime += delta;
+
+        if (afterStretchTime >= AFTER_STRETCH_DELAY) {
+            waitAfterStretch = false;
             startRotate = true;
         }
     }
+
     // fase muter karakter
-    else if (!recoilTriggered) {
+    else if (!recoilTriggered && !waitForShoot) {
         mesh.rotation.y += ROTATE_STEP;
 
         if (mesh.rotation.y >= TARGET_YAW) {
             mesh.rotation.y = TARGET_YAW;
 
-            // trigger recoil sekali saja
+            // selesai muter, mulai nunggu tembak
+            waitForShoot = true;
+            shootDelayTime = 0;
+        }
+    }
+
+    // fase nunggu sebelum tembak
+    else if (waitForShoot && !recoilTriggered) {
+        shootDelayTime += delta;
+
+        if (shootDelayTime >= SHOOT_DELAY) {
             recoilTriggered = true;
             isRecoiling = true;
             recoilTime = 0;
@@ -109,12 +195,14 @@ export function updateScene16(delta) {
             charBaseQuat.copy(mesh.quaternion);
             charBasePos.copy(mesh.position);
 
-            // PLAY SOUND SEKALI
             if (gunShotSound && !gunShotSound.isPlaying) {
                 gunShotSound.play(0);
             }
+
+            waitForShoot = false;
         }
     }
+
 
     const oldPos = mesh.position.clone();
 
