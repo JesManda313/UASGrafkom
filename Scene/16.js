@@ -38,7 +38,10 @@ let startRotate = false;
 
 const GUN_POSITION = new THREE.Vector3(1.07, 0.033, -2.35);
 
+// Audio Variables
 let gunShotSound = null;
+let surpriseSound = null;
+let scene16BgAudio = null;
 
 const SHOOT_DELAY = 2.8;
 
@@ -98,13 +101,31 @@ export async function initializeScene16(scene, createPlayerFunc, camera) {
         sceneRef.add(gun);
     });
 
-    // gun shot sound
-    gunShotSound = new THREE.Audio(camera.children.find(o => o.type === "AudioListener"));
-
+    // --- AUDIO SYSTEM ---
+    const listener = camera.children.find(o => o.type === "AudioListener");
     const audioLoader = new THREE.AudioLoader();
+
+    // 1. Gun Shot Sound
+    gunShotSound = new THREE.Audio(listener);
     audioLoader.load("backsound/gun-shot-359196.wav", buffer => {
         gunShotSound.setBuffer(buffer);
         gunShotSound.setVolume(0.8);
+    });
+
+    // 2. Surprise Sound (saat stretch)
+    surpriseSound = new THREE.Audio(listener);
+    audioLoader.load("backsound/surprise-sound-effect-99300.mp3", buffer => {
+        surpriseSound.setBuffer(buffer);
+        surpriseSound.setVolume(0.7);
+    });
+
+    // 3. Background Scene Audio (Dimainkan sekali saat scene dibuka)
+    scene16BgAudio = new THREE.Audio(listener);
+    audioLoader.load("backsound/scene16Audio.mp3", buffer => {
+        scene16BgAudio.setBuffer(buffer);
+        scene16BgAudio.setVolume(0.5);
+        scene16BgAudio.setLoop(false); // TIDAK DI-LOOP
+        scene16BgAudio.play();
     });
 
 
@@ -124,6 +145,11 @@ export function updateScene16(delta) {
             isStretching = true;
             stretchTime = 0;
             baseScale.copy(mesh.scale);
+
+            // MAIN KAN SOUND SURPRISE SAAT MULAI STRETCH
+            if (surpriseSound && !surpriseSound.isPlaying) {
+                surpriseSound.play();
+            }
         }
     }
 
@@ -269,10 +295,21 @@ export function clearScene16() {
         gun = null;
     }
 
+    // Stop all audio on cleanup
     if (gunShotSound) {
         gunShotSound.stop();
         gunShotSound.disconnect();
         gunShotSound = null;
+    }
+    if (surpriseSound) {
+        surpriseSound.stop();
+        surpriseSound.disconnect();
+        surpriseSound = null;
+    }
+    if (scene16BgAudio) {
+        scene16BgAudio.stop();
+        scene16BgAudio.disconnect();
+        scene16BgAudio = null;
     }
 
     singleCharacter = null;
