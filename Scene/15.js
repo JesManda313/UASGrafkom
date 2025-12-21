@@ -105,10 +105,12 @@ export async function initializeScene15(scene, createPlayerFunc, playerObj, came
                 (obj.name.toLowerCase().includes("nose2") ||
                  obj.name.toLowerCase().includes("nose3"))
             ) {
-                const mat = new THREE.MeshBasicMaterial({
+                const mat = new THREE.MeshStandardMaterial({
                     color: 0x00cc30,
                     transparent: true,
                     opacity: 0,
+                    roughness: 0.7,
+                    metalness: 0.5,
                     side: THREE.DoubleSide
                 });
 
