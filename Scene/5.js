@@ -9,6 +9,19 @@ let sabotageSound = null;
 let writingSound = null; 
 let isActive = false;
 
+// ===== Shock Animation =====
+const STRETCH_DURATION = 0.2;
+const STRETCH_AMOUNT = 1.15;
+
+let isStretching = false;
+let stretchTime = 0;
+let baseScale = new THREE.Vector3();
+
+const AFTER_STRETCH_DELAY = 0.5;
+
+let waitAfterStretch = false;
+let afterStretchTime = 0;
+
 // ================= CONFIG =================
 
 // Kecepatan per detik
@@ -84,6 +97,11 @@ export async function initializeScene5(scene, camera, createPlayerFunc) {
     overlayActive = false;
     writingTimer = 0; 
 
+    isStretching = false;
+    stretchTime = 0;
+    waitAfterStretch = false;
+    afterStretchTime = 0;
+
     // ===== Sound Setup =====
     if (camera) {
         const listener = camera.children.find((c) => c.type === "AudioListener");
@@ -142,6 +160,9 @@ export function updateScene5(delta) {
             overlayActive = true;
             overlayTimer = 0;
             redOverlay.visible = true;
+            isStretching = true;
+            stretchTime = 0;
+            baseScale.copy(mesh.scale);
             
             // Nyalakan alarm sabotase
             if (sabotageSound && !sabotageSound.isPlaying && sabotageSound.buffer) {
@@ -164,6 +185,65 @@ export function updateScene5(delta) {
             overlayTimer = 0;
             redOverlay.visible = false;
         }
+    }
+
+    if (isStretching) {
+        stretchTime += delta;
+        const half = STRETCH_DURATION / 2;
+
+        let stretchFactor;
+
+        if (stretchTime <= half) {
+            // naik
+            stretchFactor = THREE.MathUtils.lerp(
+                1,
+                STRETCH_AMOUNT,
+                stretchTime / half
+            );
+        } else if (stretchTime <= STRETCH_DURATION) {
+            // turun
+            stretchFactor = THREE.MathUtils.lerp(
+                STRETCH_AMOUNT,
+                1,
+                (stretchTime - half) / half
+            );
+        } else {
+            mesh.scale.copy(baseScale);
+            isStretching = false;
+            waitAfterStretch = true;
+            afterStretchTime = 0;
+            return;
+        }
+
+        mesh.scale.set(
+            baseScale.x,
+            baseScale.y * stretchFactor,
+            baseScale.z
+        );
+
+        singleCharacter.update(delta, {
+            position: mesh.position,
+            oldPosition: mesh.position,
+            isMoving: false
+        });
+
+        return;
+    }
+
+    if (waitAfterStretch) {
+        afterStretchTime += delta;
+
+        singleCharacter.update(delta, {
+            position: mesh.position,
+            oldPosition: mesh.position,
+            isMoving: false
+        });
+
+        if (afterStretchTime >= AFTER_STRETCH_DELAY) {
+            waitAfterStretch = false;
+        }
+
+        return;
     }
 
     // ===== Logika Pergerakan Karakter (Pathfinding) =====
