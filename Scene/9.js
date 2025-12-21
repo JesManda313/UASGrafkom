@@ -10,6 +10,14 @@ let redOverlay = null;
 // hand Vars
 let handMesh = null;
 let sabotageSound = null;
+let successSound = null;
+let breathSound = null;
+let waveSound = null;
+
+// Sound Flags
+let successPlayed = false;
+let breathPlayed = false;
+let wavePlayedCount = 0; // 0=none, 1=first wave, 2=second wave
 
 // Timing & State
 let sceneTimer = 0;
@@ -29,13 +37,23 @@ const MOVE_DURATION = 3.0;
 const PLAYER_START_POS = new THREE.Vector3(0.77, 0.005, -2.61);
 const PLAYER_END_POS = new THREE.Vector3(0.83, 0.005, -3.24);
 
-const HAND_COLOR = "#00cc30";
+const HAND_COLOR = "#00ff3c";
 
 // hand Movement
 const hand_START_POS = new THREE.Vector3(0.83, 0.07, -3.27); // Starting near player
 const hand_TARGET_POS = new THREE.Vector3(0.87, 0.097, -3.28);
 const hand_MOVE_DURATION = 0.5;
 const hand_STAY_DURATION = 3.0;
+
+// Phase 4
+const hand_RETURN_DURATION = 0.3;
+const TOTAL_ANIM_TIME =
+  MOVE_DURATION +
+  hand_MOVE_DURATION +
+  hand_STAY_DURATION +
+  hand_RETURN_DURATION;
+const STRETCH_DURATION = 1.0;
+const BASE_SCALE = 0.019; // From character.js
 
 // (Lighting)
 const OVERLAY_INTERVAL = 1.5;
@@ -58,9 +76,24 @@ export async function initializeScene9(
     if (sabotageSound.isPlaying) sabotageSound.stop();
     sabotageSound = null;
   }
+  if (successSound) {
+    if (successSound.isPlaying) successSound.stop();
+    successSound = null;
+  }
+  if (breathSound) {
+    if (breathSound.isPlaying) breathSound.stop();
+    breathSound = null;
+  }
+  if (waveSound) {
+    if (waveSound.isPlaying) waveSound.stop();
+    waveSound = null;
+  }
 
   isActive = true;
   sceneTimer = 0;
+  successPlayed = false;
+  breathPlayed = false;
+  wavePlayedCount = 0;
   // Initialize to interval so it blinks immediately
   overlayTimer = OVERLAY_INTERVAL;
   overlayActive = false;
@@ -101,17 +134,38 @@ export async function initializeScene9(
         // Visibility Check
         model.visible = sceneTimer >= MOVE_DURATION;
 
-        // Use Basic Material to ensure GREEN color is visible regardless of lighting
-        const greenMat = new THREE.MeshBasicMaterial({
+        // New Material Logic (Scene 15 Style)
+        const greenMat = new THREE.MeshStandardMaterial({
           color: HAND_COLOR,
-          depthTest: true,
+          roughness: 0.7,
+          metalness: 0.5,
+          side: THREE.DoubleSide,
         });
 
+        const outlineMat = new THREE.MeshBasicMaterial({
+          color: 0x000000,
+          side: THREE.BackSide,
+        });
+
+        const meshes = [];
         model.traverse((o) => {
           if (o.isMesh) {
-            o.material = greenMat;
-            o.frustumCulled = false; // Prevent culling
+            meshes.push(o);
           }
+        });
+
+        meshes.forEach((o) => {
+          o.material = greenMat;
+          o.castShadow = true;
+          o.receiveShadow = true;
+          o.frustumCulled = false; // Prevent culling
+
+          // Outline
+          const outline = o.clone();
+          outline.geometry = o.geometry;
+          outline.material = outlineMat;
+          outline.scale.set(1.05, 1.05, 1.05);
+          o.add(outline);
         });
 
         scene.add(model);
@@ -186,6 +240,36 @@ export async function initializeScene9(
             sabotageSound.setVolume(0.5);
           }
         );
+
+        // Success Sound
+        successSound = new THREE.Audio(listener);
+        camera.add(successSound);
+        audioLoader.load("backsound/success.mp3", (buffer) => {
+          if (!isActive) return;
+          successSound.setBuffer(buffer);
+          successSound.setLoop(false);
+          successSound.setVolume(0.5);
+        });
+
+        // Breath Sound
+        breathSound = new THREE.Audio(listener);
+        camera.add(breathSound);
+        audioLoader.load("backsound/menghelaNapas.mp3", (buffer) => {
+          if (!isActive) return;
+          breathSound.setBuffer(buffer);
+          breathSound.setLoop(false);
+          breathSound.setVolume(0.5);
+        });
+
+        // Wave Sound
+        waveSound = new THREE.Audio(listener);
+        camera.add(waveSound);
+        audioLoader.load("backsound/lambaiTangan.mp3", (buffer) => {
+          if (!isActive) return;
+          waveSound.setBuffer(buffer);
+          waveSound.setLoop(false);
+          waveSound.setVolume(0.5);
+        });
       }
     }
 
@@ -220,6 +304,15 @@ export function updateScene9(delta) {
       sabotageSound.play();
     }
 
+    // Success Sound Trigger
+    const SUCCESS_TRIGGER_TIME = END_PHASE_3_TIME - 0.3;
+    if (sceneTimer >= SUCCESS_TRIGGER_TIME && !successPlayed) {
+      if (successSound && successSound.buffer) {
+        successSound.play();
+        successPlayed = true;
+      }
+    }
+
     if (redOverlay) {
       // Turn on overlay
       if (!overlayActive && overlayTimer >= OVERLAY_INTERVAL) {
@@ -239,6 +332,14 @@ export function updateScene9(delta) {
     // Stop Sound
     if (sabotageSound && sabotageSound.isPlaying) {
       sabotageSound.stop();
+    }
+
+    // Breath Sound Trigger (Start of Stretch Phase) -> TOTAL_ANIM_TIME
+    if (sceneTimer >= TOTAL_ANIM_TIME && !breathPlayed) {
+      if (breathSound && breathSound.buffer) {
+        breathSound.play();
+        breathPlayed = true;
+      }
     }
 
     // Force off if time exceeded
@@ -298,14 +399,7 @@ export function updateScene9(delta) {
     }
 
     // Phase 4: Player Stretch Animation
-    const hand_RETURN_DURATION = 0.3;
-    const TOTAL_ANIM_TIME =
-      MOVE_DURATION +
-      hand_MOVE_DURATION +
-      hand_STAY_DURATION +
-      hand_RETURN_DURATION;
-    const STRETCH_DURATION = 1.0;
-    const BASE_SCALE = 0.019; // From character.js
+    // Constants moved to top level
 
     if (
       sceneTimer >= TOTAL_ANIM_TIME &&
@@ -328,13 +422,13 @@ export function updateScene9(delta) {
     }
 
     // Phase 5: Turn to Camera (0.2s)
-    const TURN_START_TIME = TOTAL_ANIM_TIME + STRETCH_DURATION; // 7.8s
+    const TURN_START_TIME = TOTAL_ANIM_TIME + STRETCH_DURATION;
     const TURN_DURATION = 0.2;
 
     // Phase 6: Hand Wave (1.5s)
     // DELAY 0.2s after turn before wave starts
     const WAVE_DELAY = 0.2;
-    const WAVE_START_TIME = TURN_START_TIME + TURN_DURATION + WAVE_DELAY; // 8.2s
+    const WAVE_START_TIME = TURN_START_TIME + TURN_DURATION + WAVE_DELAY;
     const WAVE_DURATION = 1.5;
 
     // --- Phase 5 Logic ---
@@ -385,6 +479,24 @@ export function updateScene9(delta) {
       handMesh.visible = true;
 
       const waveT = (sceneTimer - WAVE_START_TIME) / WAVE_DURATION;
+
+      // 1st Wave
+      if (wavePlayedCount === 0) {
+        if (waveSound && waveSound.buffer) {
+          if (waveSound.isPlaying) waveSound.stop();
+          waveSound.play();
+          wavePlayedCount = 1;
+        }
+      }
+
+      // 2nd Wave (at 50% progress)
+      if (wavePlayedCount === 1 && waveT >= 0.5) {
+        if (waveSound && waveSound.buffer) {
+          if (waveSound.isPlaying) waveSound.stop();
+          waveSound.play();
+          wavePlayedCount = 2;
+        }
+      }
 
       const waveFreq = Math.PI * 4; // 2 cycles
       const xOffset = Math.sin(waveT * waveFreq) * 0.01; // Left/Right
@@ -467,6 +579,18 @@ export function clearScene9() {
   if (sabotageSound) {
     if (sabotageSound.isPlaying) sabotageSound.stop();
     sabotageSound = null;
+  }
+  if (successSound) {
+    if (successSound.isPlaying) successSound.stop();
+    successSound = null;
+  }
+  if (breathSound) {
+    if (breathSound.isPlaying) breathSound.stop();
+    breathSound = null;
+  }
+  if (waveSound) {
+    if (waveSound.isPlaying) waveSound.stop();
+    waveSound = null;
   }
 
   if (redOverlay && sceneCamera) {
