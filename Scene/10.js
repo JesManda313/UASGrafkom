@@ -6,6 +6,15 @@ let userPlayerReference = null;
 let sceneCamera = null;
 let sceneTimer = 0;
 let sceneSound = null; // Variabel untuk menyimpan audio
+let tingSound = null;
+let tingPlayedCount = 0;
+let shadowChar = null;
+
+// Shadow Character Config
+const SHADOW_POS = new THREE.Vector3(0.92, 0.005, -1.86);
+const SHADOW_START_TIME = 0.65; // DELAY_TIME (0.5) + MOVE_DURATION (0.15)
+const BLINK_DURATION = 0.2;
+const BLINK_COUNT = 3;
 
 // Camera Config
 const CAM_START_X = 0.87;
@@ -24,6 +33,7 @@ const STAY_DURATION = 2.0;
 export function initializeScene10(scene, createPlayerFunc, playerObj, camera) {
   isActive = true;
   sceneTimer = 0;
+  tingPlayedCount = 0;
   sceneReference = scene;
   userPlayerReference = playerObj;
   sceneCamera = camera;
@@ -37,18 +47,27 @@ export function initializeScene10(scene, createPlayerFunc, playerObj, camera) {
   if (camera) {
     // Mencari AudioListener yang biasanya sudah ditempelkan ke camera di main.js
     const listener = camera.children.find((c) => c.type === "AudioListener");
-    
+
     if (listener) {
       sceneSound = new THREE.Audio(listener);
       const audioLoader = new THREE.AudioLoader();
-      
+
       audioLoader.load("backsound/sceneHilang.mp3", (buffer) => {
-        if (isActive) { // Cek lagi apakah scene masih aktif saat loading selesai
+        if (isActive) {
+          // Cek lagi apakah scene masih aktif saat loading selesai
           sceneSound.setBuffer(buffer);
-          sceneSound.setLoop(false); // Set true jika ingin berulang
           sceneSound.setVolume(0.6);
           sceneSound.play();
         }
+      });
+
+      // Ting Sound
+      tingSound = new THREE.Audio(listener);
+      audioLoader.load("backsound/ting_cut.mp3", (buffer) => {
+        if (!isActive) return;
+        tingSound.setBuffer(buffer);
+        tingSound.setLoop(false);
+        tingSound.setVolume(0.5);
       });
     }
 
@@ -67,6 +86,21 @@ export function initializeScene10(scene, createPlayerFunc, playerObj, camera) {
       camera.position.z + dir.z
     );
   }
+
+  // Create Shadow Character
+  const shadowCallback = async () => {
+    const player = await createPlayerFunc(scene, SHADOW_POS, "#000000", camera);
+    shadowChar = player;
+
+    // Force Black Silhouette Material
+    const blackMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    player.mesh.traverse((o) => {
+      if (o.isMesh) o.material = blackMat;
+    });
+
+    player.mesh.visible = false;
+  };
+  shadowCallback();
 }
 
 export function updateScene10(delta) {
@@ -95,6 +129,37 @@ export function updateScene10(delta) {
       sceneCamera.position.set(CAM_START_X, CAM_START_Y, CAM_END_Z);
     }
   }
+
+  // Shadow Character Blink Logic
+  if (shadowChar && shadowChar.mesh) {
+    if (sceneTimer >= SHADOW_START_TIME) {
+      const timeSinceStart = sceneTimer - SHADOW_START_TIME;
+      const cycleDuration = BLINK_DURATION * 2; // On + Off
+      const currentCycle = Math.floor(timeSinceStart / cycleDuration);
+      const timeInCycle = timeSinceStart % cycleDuration;
+
+      if (currentCycle < BLINK_COUNT) {
+        // Visible for first half of cycle
+        const isVisible = timeInCycle < BLINK_DURATION;
+        shadowChar.mesh.visible = isVisible;
+
+        if (isVisible) {
+          if (tingPlayedCount === currentCycle) {
+            if (tingSound && tingSound.buffer) {
+              if (tingSound.isPlaying) tingSound.stop();
+              tingSound.play();
+              tingPlayedCount++;
+            }
+          }
+        }
+      } else {
+        // Finished
+        shadowChar.mesh.visible = false;
+      }
+    } else {
+      shadowChar.mesh.visible = false;
+    }
+  }
 }
 
 export function clearScene10() {
@@ -106,8 +171,20 @@ export function clearScene10() {
   }
   sceneSound = null;
 
+  if (tingSound) {
+    if (tingSound.isPlaying) tingSound.stop();
+    tingSound = null;
+  }
+
   if (userPlayerReference && userPlayerReference.mesh) {
     userPlayerReference.mesh.visible = true;
+  }
+
+  if (shadowChar) {
+    if (sceneReference && shadowChar.mesh) {
+      sceneReference.remove(shadowChar.mesh);
+    }
+    shadowChar = null;
   }
 }
 
