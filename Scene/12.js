@@ -5,6 +5,7 @@ const lightGreen = "#00ff3c";
 
 let singleCharacter = null;
 let sceneRef = null;
+let sound = null; // Variable global untuk menyimpan objek suara
 
 // target kemiringan (derajat)
 const TARGET_TILT_Z = THREE.MathUtils.degToRad(-25);
@@ -20,15 +21,35 @@ export async function initializeScene12(scene, createPlayerFunc, camera) {
 
     // Menghadap Z positif
     player.mesh.rotation.y = 0;
-
     // Mulai dari tidak miring
     player.mesh.rotation.z = 0;
-
     // Simpan target rotasi
     player.targetTiltZ = TARGET_TILT_Z;
 
     singleCharacter = player;
     isActive = true;
+
+    // --- LOGIKA PLAY SOUND SAAT DIMULAI ---
+    if (camera) {
+        // Mencari AudioListener yang sudah ada di kamera
+        const listener = camera.children.find(c => c.type === 'AudioListener');
+        
+        if (listener) {
+            sound = new THREE.Audio(listener);
+            const audioLoader = new THREE.AudioLoader();
+            
+            // Load dan Play sound segera setelah scene diinisialisasi
+            audioLoader.load('backsound/ngintip.mp3', function (buffer) {
+                // Cek isActive agar jika scene cepat ditutup, suara tidak mendadak nyala
+                if (isActive && sound) {
+                    sound.setBuffer(buffer);
+                    sound.setLoop(false); // Sekali putar
+                    sound.setVolume(0.5);
+                    sound.play(); // Play otomatis saat scene dimulai
+                }
+            });
+        }
+    }
 }
 
 export function updateScene12(delta) {
@@ -57,6 +78,12 @@ export function updateScene12(delta) {
 
 export function clearScene12() {
     if (!singleCharacter) return;
+
+    // Hentikan suara jika adegan dihapus/selesai
+    if (sound && sound.isPlaying) {
+        sound.stop();
+    }
+    sound = null;
 
     if (singleCharacter.mixer) {
         singleCharacter.mixer.stopAllAction();
