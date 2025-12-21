@@ -96,8 +96,6 @@ export async function initializeScene9(
 
         model.position.copy(hand_START_POS);
 
-        // Rotation Fix: Fingers UP (Z=PI), Palm AWAY (Y=PI/2)
-        // Rotation Fix: Flip Y to move thumb to other side
         model.rotation.set(0, -Math.PI / 2, Math.PI);
 
         // Visibility Check
@@ -212,9 +210,9 @@ export function updateScene9(delta) {
   overlayTimer += delta;
 
   // --- Lighting & Sound ---
-  // Stop lighting when hand returns (End of Phase 3 = 6.8s)
+  // Stop lighting when hand returns (Before End of Phase 3)
   const END_PHASE_3_TIME =
-    MOVE_DURATION + hand_MOVE_DURATION + hand_STAY_DURATION; // 6.8s
+    MOVE_DURATION + hand_MOVE_DURATION + hand_STAY_DURATION - 0.5;
 
   if (sceneTimer < END_PHASE_3_TIME) {
     // Play Sound

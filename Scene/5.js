@@ -212,6 +212,11 @@ export function clearScene5() {
         sceneRef.remove(singleCharacter.mesh);
     }
 
+    if (sabotageSound) {
+        if (sabotageSound.isPlaying) sabotageSound.stop();
+        sabotageSound = null;
+    }
+
     if (redOverlay && cameraRef) {
         cameraRef.remove(redOverlay);
         redOverlay.geometry.dispose();
