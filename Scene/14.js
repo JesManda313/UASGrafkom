@@ -197,6 +197,13 @@ export function clearScene14() {
     if (!scene14Active) return;
 
     scene14PlayerObjects.forEach(player => {
+        if (player.update) {
+            player.update(0, {
+                position: player.mesh.position,
+                oldPosition: player.mesh.position,
+                isMoving: false,
+            });
+        }
         if (player.mixer) player.mixer.stopAllAction();
         if (sceneReference) sceneReference.remove(player.mesh);
     });

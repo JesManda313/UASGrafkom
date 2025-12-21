@@ -122,11 +122,26 @@ export async function createPlayer(scene, startPos, color = "#ff0000", camera = 
                     setWalking(movement.isMoving);
                 }
 
+                function stopAll() {
+                    // Stop animasi
+                    if (walkAction) {
+                        walkAction.stop();
+                    }
+
+                    // Stop audio
+                    if (walkSound && walkSound.isPlaying) {
+                        walkSound.stop();
+                    }
+
+                    isWalking = false;
+                }
+
                 resolve({
                     mesh: model,
                     mixer,
                     update,
-                    setColor
+                    setColor,
+                    stopAll,
                 });
             },
             undefined,

@@ -5,6 +5,7 @@ const lightGreen = "#00ff3c";
 let singleCharacter = null;
 let sceneRef = null;
 let cameraRef = null;
+let sabotageSound = null;
 let isActive = false;
 
 // ================= CONFIG =================
@@ -79,6 +80,23 @@ export async function initializeScene5(scene, camera, createPlayerFunc) {
     overlayTimer = 0;
     overlayActive = false;
 
+    if (camera) {
+        const listener = camera.children.find((c) => c.type === "AudioListener");
+        if (listener) {
+            sabotageSound = new THREE.Audio(listener);
+            camera.add(sabotageSound); // IMPORTANT: Add to hierarchy so traverse finds it
+            const audioLoader = new THREE.AudioLoader();
+            audioLoader.load(
+                "backsound/among-us-alarme-sabotage-393155.mp3",
+                function (buffer) {
+                sabotageSound.setBuffer(buffer);
+                sabotageSound.setLoop(true);
+                sabotageSound.setVolume(0.5);
+                }
+            );
+        }
+    }
+
     isActive = true;
 }
 
@@ -104,6 +122,9 @@ export function updateScene5(delta) {
             overlayActive = true;
             overlayTimer = 0;
             redOverlay.visible = true;
+            if (sabotageSound && !sabotageSound.isPlaying && sabotageSound.buffer) {
+                sabotageSound.play();
+            }
         }
         return;
     }
@@ -183,8 +204,17 @@ export function clearScene5() {
         singleCharacter.mixer.stopAllAction();
     }
 
+    if (singleCharacter.stopAll) {
+        singleCharacter.stopAll();
+    }
+
     if (sceneRef) {
         sceneRef.remove(singleCharacter.mesh);
+    }
+
+    if (sabotageSound) {
+        if (sabotageSound.isPlaying) sabotageSound.stop();
+        sabotageSound = null;
     }
 
     if (redOverlay && cameraRef) {

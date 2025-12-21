@@ -47,6 +47,7 @@ let singleCharacter = null;
 let sceneRef = null;
 let cameraRef = null;
 let redOverlay = null;
+let sabotageSound = null;
 let overlayTimer = 0;
 let overlayActive = false;
 const OVERLAY_INTERVAL = 1.5;
@@ -99,6 +100,23 @@ export async function initializeScene6(scene, camera, createPlayerFunc) {
     player.targetYaw = null;
     player.initialYaw = null;
 
+    if (camera) {
+        const listener = camera.children.find((c) => c.type === "AudioListener");
+        if (listener) {
+            sabotageSound = new THREE.Audio(listener);
+            camera.add(sabotageSound); // IMPORTANT: Add to hierarchy so traverse finds it
+            const audioLoader = new THREE.AudioLoader();
+            audioLoader.load(
+                "backsound/among-us-alarme-sabotage-393155.mp3",
+                function (buffer) {
+                sabotageSound.setBuffer(buffer);
+                sabotageSound.setLoop(true);
+                sabotageSound.setVolume(0.5);
+                }
+            );
+        }
+    }
+
     singleCharacter = player;
     isActive = true;
 }
@@ -112,6 +130,9 @@ export function updateScene6(delta) {
 
         // Nyalain overlay
         if (!overlayActive && overlayTimer >= OVERLAY_INTERVAL) {
+            if (sabotageSound && !sabotageSound.isPlaying && sabotageSound.buffer) {
+                sabotageSound.play();
+            }
             overlayActive = true;
             overlayTimer = 0;
             redOverlay.visible = true;
@@ -145,6 +166,10 @@ export function clearScene6() {
         singleCharacter.mixer.stopAllAction();
     }
 
+    if (singleCharacter.stopAll) {
+        singleCharacter.stopAll();
+    }
+
     if (sceneRef) {
         sceneRef.remove(singleCharacter.mesh);
     }
@@ -153,6 +178,10 @@ export function clearScene6() {
         cameraRef.remove(redOverlay);
         redOverlay.geometry.dispose();
         redOverlay.material.dispose();
+    }
+
+    if (sabotageSound && sabotageSound.isPlaying) {
+      sabotageSound.stop();
     }
 
     redOverlay = null;
